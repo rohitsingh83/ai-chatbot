@@ -223,7 +223,7 @@ The live demo runs entirely on **Vercel**: the frontend (`frontend/`, Next.js) a
 | 7 | End-to-end testing | `backend/tests/*`, Playwright `frontend/e2e/*`, Postman collection |
 | 8 | Real-time chat with Socket.io | `sockets/chatSocket.js`, `lib/chat-context.tsx` |
 | 9 | Preferences, ratings, chat categories | `app/(app)/settings`, rating endpoint, mode picker |
-| 10 | CORS, validation, caching, indexes | `app.js`, `utils/schemas.js`, LRU cache in `aiService.js` |
+| 10 | CORS, validation, caching, indexes | `expressApp.js`, `utils/schemas.js`, LRU cache in `aiService.js` |
 | 11 | Admin dashboard and analytics | `components/admin/AdminDashboard.tsx`, `routes/admin.js` |
 | 12 | Cross-device testing and fixes | responsive layouts, mobile drawer, Playwright mobile project |
 | 13 | Deployment | live on Vercel, `render.yaml`, `docker-compose.yml`, GitHub Actions CI |
