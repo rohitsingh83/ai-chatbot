@@ -6,7 +6,7 @@
 
 Next.js · Tailwind CSS · Node.js · Express · Socket.io · MongoDB · JWT · Claude / OpenAI
 
-**Live demo: [nova-chatbot.vercel.app](https://nova-chatbot.vercel.app)** · demo login `demo@nova.dev` / `Password123`
+**Live demo: [nova-chatbot-two.vercel.app](https://nova-chatbot-two.vercel.app)** · demo login `demo@nova.dev` / `Password123`
 
 [![CI](https://github.com/rohitsingh83/ai-chatbot/actions/workflows/ci.yml/badge.svg)](https://github.com/rohitsingh83/ai-chatbot/actions/workflows/ci.yml)
 
