@@ -1,4 +1,6 @@
 import { openaiProvider } from './openai.js';
+import { demoProvider } from './demo.js';
+import { logger } from '../../utils/logger.js';
 
 /**
  * Vercel AI Gateway: one OpenAI-compatible endpoint for Claude, GPT, Gemini and more.
@@ -18,7 +20,7 @@ export function gatewayToken() {
 }
 
 export function gatewayProvider({ model, maxTokens }) {
-  return openaiProvider({
+  const real = openaiProvider({
     name: 'gateway',
     label: 'AI Gateway',
     model,
@@ -26,4 +28,27 @@ export function gatewayProvider({ model, maxTokens }) {
     baseUrl: 'https://ai-gateway.vercel.sh/v1',
     getApiKey: gatewayToken,
   });
+  const demo = demoProvider();
+  return {
+    ...real,
+    // If the gateway is not usable yet (no token, or the team has not enabled
+    // AI Gateway billing), keep the app working with the demo model instead of
+    // showing an error. Real answers start as soon as the gateway accepts requests.
+    async *stream(args) {
+      if (!gatewayToken()) {
+        yield* demo.stream(args);
+        return;
+      }
+      try {
+        yield* real.stream(args);
+      } catch (err) {
+        if ([401, 402, 403].includes(err.status)) {
+          logger.warn(`AI Gateway unavailable, using the demo model: ${err.message}`);
+          yield* demo.stream(args);
+          return;
+        }
+        throw err;
+      }
+    },
+  };
 }

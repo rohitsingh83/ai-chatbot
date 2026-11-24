@@ -177,7 +177,7 @@ The first account created becomes an admin. To make more admins, list their emai
 ## Testing
 
 ```bash
-npm test            # 26 backend tests: auth, session revocation, validation, ownership, chat flow,
+npm test            # 27 backend tests: auth, session revocation, validation, ownership, chat flow,
                     # ratings, translation, export, admin, AI caching / retry / stop,
                     # Socket.io streaming and multi-tab sync
 npm run lint        # frontend ESLint

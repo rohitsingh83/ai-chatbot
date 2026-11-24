@@ -119,3 +119,18 @@ test('AI Gateway provider uses the latest Vercel OIDC token', async () => {
     globalThis.fetch = realFetch;
   }
 });
+
+test('AI Gateway falls back to the demo model when billing is not enabled', async () => {
+  const { gatewayProvider, rememberOidcToken } = await import('../src/services/providers/gateway.js');
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('{"error":"credit card required"}', { status: 403 });
+  try {
+    rememberOidcToken({ 'x-vercel-oidc-token': 'oidc-456' });
+    const p = gatewayProvider({ model: 'anthropic/claude-haiku-5.5', maxTokens: 50 });
+    let out = '';
+    for await (const t of p.stream({ system: 'sys', messages: [{ role: 'user', content: 'Hello' }] })) out += t;
+    assert.ok(out.length > 0);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
