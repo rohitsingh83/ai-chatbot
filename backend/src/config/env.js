@@ -31,6 +31,8 @@ export const env = {
     openaiModel: process.env.OPENAI_MODEL || 'gpt-4o-mini',
     openaiBaseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
     gatewayModel: process.env.AI_GATEWAY_MODEL || 'anthropic/claude-haiku-5.5',
+    // Tried in order when the main model is not available on the team's plan (e.g. AI Gateway free tier).
+    gatewayFallbackModels: list(process.env.AI_GATEWAY_FALLBACK_MODELS || 'nvidia/nemotron-3.5-lightning-free,reflection/beam-free'),
     maxTokens: Number(process.env.AI_MAX_TOKENS) || 1024,
     timeoutMs: Number(process.env.AI_TIMEOUT_MS) || 60000,
     historyLimit: Number(process.env.AI_HISTORY_LIMIT) || 20,

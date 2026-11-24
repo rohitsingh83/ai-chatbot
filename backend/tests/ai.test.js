@@ -134,3 +134,26 @@ test('AI Gateway falls back to the demo model when billing is not enabled', asyn
     globalThis.fetch = realFetch;
   }
 });
+
+test('AI Gateway tries the next model when one is not on the plan', async () => {
+  const { gatewayProvider, rememberOidcToken } = await import('../src/services/providers/gateway.js');
+  const realFetch = globalThis.fetch;
+  const tried = [];
+  globalThis.fetch = async (_url, init) => {
+    const { model } = JSON.parse(init.body);
+    tried.push(model);
+    if (model === 'paid/model') return new Response('{"error":"Free tier users do not have access"}', { status: 403 });
+    return new Response('data: {"choices":[{"delta":{"content":"ok"}}]}\n\ndata: [DONE]\n\n', { status: 200 });
+  };
+  try {
+    rememberOidcToken({ 'x-vercel-oidc-token': 'oidc-789' });
+    const p = gatewayProvider({ model: 'paid/model', fallbackModels: ['free/model'], maxTokens: 50 });
+    let out = '';
+    for await (const t of p.stream({ system: 's', messages: [{ role: 'user', content: 'Hi' }] })) out += t;
+    assert.equal(out, 'ok');
+    assert.deepEqual(tried, ['paid/model', 'free/model']);
+    assert.equal(p.model, 'free/model');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});

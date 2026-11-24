@@ -19,36 +19,60 @@ export function gatewayToken() {
   return process.env.AI_GATEWAY_API_KEY || oidcToken;
 }
 
-export function gatewayProvider({ model, maxTokens }) {
-  const real = openaiProvider({
-    name: 'gateway',
-    label: 'AI Gateway',
-    model,
-    maxTokens,
-    baseUrl: 'https://ai-gateway.vercel.sh/v1',
-    getApiKey: gatewayToken,
-  });
+export function gatewayProvider({ model, fallbackModels = [], maxTokens }) {
+  const models = [model, ...fallbackModels.filter((m) => m && m !== model)];
+  const clients = new Map(
+    models.map((m) => [
+      m,
+      openaiProvider({
+        name: 'gateway',
+        label: 'AI Gateway',
+        model: m,
+        maxTokens,
+        baseUrl: 'https://ai-gateway.vercel.sh/v1',
+        getApiKey: gatewayToken,
+      }),
+    ]),
+  );
+  // Models the team cannot use yet (e.g. paid models before credits are added)
+  // are skipped for a while, then retried, so upgrading needs no redeploy.
+  const blockedUntil = new Map();
   const demo = demoProvider();
+  let active = model;
+
   return {
-    ...real,
-    // If the gateway is not usable yet (no token, or the team has not enabled
-    // AI Gateway billing), keep the app working with the demo model instead of
-    // showing an error. Real answers start as soon as the gateway accepts requests.
+    name: 'gateway',
+    get model() {
+      return active;
+    },
     async *stream(args) {
       if (!gatewayToken()) {
         yield* demo.stream(args);
         return;
       }
-      try {
-        yield* real.stream(args);
-      } catch (err) {
-        if ([401, 402, 403].includes(err.status)) {
-          logger.warn(`AI Gateway unavailable, using the demo model: ${err.message}`);
-          yield* demo.stream(args);
+      for (const m of models) {
+        if ((blockedUntil.get(m) || 0) > Date.now()) continue;
+        let started = false;
+        try {
+          for await (const chunk of clients.get(m).stream(args)) {
+            started = true;
+            active = m;
+            yield chunk;
+          }
+          active = m;
           return;
+        } catch (err) {
+          if (!started && [401, 402, 403].includes(err.status)) {
+            logger.warn(`AI Gateway model ${m} unavailable: ${err.message}`);
+            blockedUntil.set(m, Date.now() + 10 * 60 * 1000);
+            continue;
+          }
+          throw err;
         }
-        throw err;
       }
+      // Nothing usable on the gateway: keep the app working with the demo model.
+      logger.warn('AI Gateway has no usable model, using the demo model');
+      yield* demo.stream(args);
     },
   };
 }
