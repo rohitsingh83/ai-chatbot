@@ -6,6 +6,10 @@
 
 Next.js · Tailwind CSS · Node.js · Express · Socket.io · MongoDB · JWT · Claude / OpenAI
 
+**Live demo: [nova-chatbot.vercel.app](https://nova-chatbot.vercel.app)** · demo login `demo@nova.dev` / `Password123`
+
+[![CI](https://github.com/rohitsingh83/ai-chatbot/actions/workflows/ci.yml/badge.svg)](https://github.com/rohitsingh83/ai-chatbot/actions/workflows/ci.yml)
+
 ![Landing page](docs/screenshots/landing.png)
 
 </div>
@@ -30,15 +34,18 @@ Next.js · Tailwind CSS · Node.js · Express · Socket.io · MongoDB · JWT · 
 
 | | Feature | Details |
 | --- | --- | --- |
-| 🔐 | **User authentication** | Sign up / log in with JWT. Passwords hashed with bcrypt, password strength meter, change password, sessions restored on reload, automatic logout when a token expires. |
+| 🔐 | **User authentication** | Sign up / log in with JWT. Passwords hashed with bcrypt, password strength meter, sessions restored on reload, automatic logout when a token expires. Changing your password signs out every other device, and **Sign out other devices** revokes all old sessions instantly (token versioning, open sockets are disconnected). |
 | 💬 | **Chat interface** | Responsive Tailwind UI with Markdown, tables and syntax-highlighted code blocks (with copy buttons), auto-growing input, suggestion cards, scroll-to-latest, keyboard shortcuts. |
 | ⚡ | **Real-time streaming** | Socket.io streams each token as it is generated. A "thinking" state, a **Stop** button that keeps the partial answer, **Regenerate**, and live sync across every open tab. Falls back to plain HTTP if WebSockets are unavailable. |
 | 🧠 | **AI-powered responses** | Pluggable providers: **Anthropic Claude**, **OpenAI** (or any OpenAI-compatible API such as Groq, OpenRouter or Ollama), and an offline **demo model** so the whole app works with no API key. |
 | 🗂️ | **Chat history** | Conversations and messages stored in MongoDB with indexes. Sidebar grouped by Today / Yesterday / Previous 7 days, full-text search across titles *and* message content, rename, pin, delete, export to Markdown. Titles are generated from the first message. |
-| 🎨 | **Personalisation** | Rename the assistant, light / dark / system theme, five accent colours, default chat mode, reply language (multilingual), response length, and "send on Enter". Changes apply instantly. |
+| 🎨 | **Personalisation** | Rename the assistant, light / dark / system theme, five accent colours, default chat mode, reply language, response length, and "send on Enter". Changes apply instantly. |
+| 🧩 | **Custom AI tuning** | Personal **custom instructions** ("I'm a CS student, explain with Java examples") that are added to every conversation's system prompt. |
+| 🌐 | **Multilingual** | Answer in any language, and **translate any reply** into 11 languages (English, Hindi, Spanish, French, German, Japanese, Chinese, Arabic, Portuguese, Bengali, Tamil) with one click. Translations are cached. |
+| 📅 | **Google Calendar** | **Add to Google Calendar** on any reply turns a plan or reminder into a pre-filled calendar event. |
 | 🏷️ | **Chat categories** | Casual, Professional, Creative and Coding modes, each changing the assistant's tone and format. Switch mode at any time. |
 | 👍 | **Ratings & feedback** | Thumbs up / down on any reply, with quick-pick reasons and written feedback for bad answers. |
-| 📊 | **Admin panel & analytics** | KPIs (users, active users, conversations, satisfaction, average response time, failed replies), activity chart, busiest hours, chat-mode split, rating breakdown, most active users, recent feedback, system status (provider, storage, online users, cache hit rate, uptime) and user role management. Auto-refreshes every 30 s. |
+| 📊 | **Admin panel & analytics** | KPIs (users, active users, conversations, satisfaction, average response time, failed replies), activity chart, busiest hours, chat-mode split, rating breakdown, most active users, recent feedback, recent user activity feed, system status (provider, storage, online users, cache hit rate, uptime) and user role management. Auto-refreshes every 30 s. |
 | 🎙️ | **Voice** | Dictate messages with the microphone (Web Speech API) and have replies read aloud. |
 | 🛡️ | **Security & performance** | Helmet, CORS allow-list, zod validation on every input, per-user and per-IP rate limiting (HTTP *and* sockets), ownership checks on every chat, LRU response cache for repeated questions, AI timeouts with one automatic retry, compression and DB indexes. |
 
@@ -169,20 +176,38 @@ The first account created becomes an admin. To make more admins, list their emai
 ## Testing
 
 ```bash
-npm test            # 20 backend tests: auth, validation, ownership, chat flow, ratings, export,
-                    # admin, AI caching / retry / stop, Socket.io streaming and multi-tab sync
+npm test            # 25 backend tests: auth, session revocation, validation, ownership, chat flow,
+                    # ratings, translation, export, admin, AI caching / retry / stop,
+                    # Socket.io streaming and multi-tab sync
 npm run lint        # frontend ESLint
 npm run build       # frontend production build + type check
+
+cd frontend && npm run test:e2e   # 13 Playwright browser tests on desktop and a Pixel 7:
+                                  # sign up, chat, stop/regenerate, ratings, translate,
+                                  # settings, admin access, mobile drawer
 ```
 
-The `POST /api/conversations/:id/messages` endpoint returns the full reply in one response, which makes the AI flow easy to test from Postman (see [docs/API.md](docs/API.md)).
+- **Postman:** import [`docs/nova.postman_collection.json`](docs/nova.postman_collection.json) (21 requests with tests that save the token and ids automatically). Run it from the command line with `npx newman run docs/nova.postman_collection.json`.
+- **Real MongoDB:** set `TEST_MONGODB_URI` and the backend suite runs against MongoDB instead of the file store.
+- **CI:** [GitHub Actions](.github/workflows/ci.yml) runs the backend suite against both the file store and a real MongoDB service, lints and builds the frontend, and runs the Playwright tests on every push.
+
+## Docker
+
+```bash
+docker compose up --build   # MongoDB + API on :4000 + web app on :3000
+```
+
+Set `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` in your shell first to use a real model.
 
 ## Deployment
+
+The live demo runs entirely on **Vercel**: the frontend (`frontend/`, Next.js) and the API (`backend/`, Express + Socket.io on Vercel Functions with Fluid compute, entrypoint [`src/index.js`](backend/src/index.js)). Without `MONGODB_URI` the API uses a temporary demo store that resets from time to time; add a MongoDB Atlas connection string to keep data permanently.
 
 | Part | Where | How |
 | --- | --- | --- |
 | Database | **MongoDB Atlas** | Create a free cluster, allow access from your backend host, copy the connection string. |
 | Backend | **Render** (or Railway / AWS) | Use the included [`render.yaml`](render.yaml) blueprint, or create a Node web service with root `backend`, build `npm ci`, start `npm start`. Set `MONGODB_URI`, `JWT_SECRET`, `CLIENT_ORIGIN` (your Vercel URL) and an AI key. WebSockets work out of the box. |
+| Backend (alternative) | **Vercel** | Import the repo again with root directory `backend` (framework Express). Set `JWT_SECRET`, `CLIENT_ORIGIN`, `MONGODB_URI` and an AI key. |
 | Frontend | **Vercel** | Import the repo, set the root directory to `frontend`, and set `NEXT_PUBLIC_API_URL` to the backend URL. |
 
 ## Project timeline: how the brief maps to the code
@@ -195,20 +220,22 @@ The `POST /api/conversations/:id/messages` endpoint returns the full reply in on
 | 4 | Chat UI | `frontend/src/components/chat/*` |
 | 5 | Loading states, frontend auth, history | `MessageBubble` (thinking state), `lib/auth-context.tsx`, sidebar |
 | 6 | Error handling, timeouts, rate limiting, query optimisation | `middleware/error.js`, `middleware/rateLimit.js`, model indexes |
-| 7 | End-to-end testing | `backend/tests/*` |
+| 7 | End-to-end testing | `backend/tests/*`, Playwright `frontend/e2e/*`, Postman collection |
 | 8 | Real-time chat with Socket.io | `sockets/chatSocket.js`, `lib/chat-context.tsx` |
 | 9 | Preferences, ratings, chat categories | `app/(app)/settings`, rating endpoint, mode picker |
 | 10 | CORS, validation, caching, indexes | `app.js`, `utils/schemas.js`, LRU cache in `aiService.js` |
 | 11 | Admin dashboard and analytics | `components/admin/AdminDashboard.tsx`, `routes/admin.js` |
-| 12 | Cross-device testing and fixes | responsive layouts, mobile drawer |
-| 13 | Deployment | `render.yaml`, Vercel instructions above |
+| 12 | Cross-device testing and fixes | responsive layouts, mobile drawer, Playwright mobile project |
+| 13 | Deployment | live on Vercel, `render.yaml`, `docker-compose.yml`, GitHub Actions CI |
 | 14 | Documentation | this README, [docs/API.md](docs/API.md) |
 
 ## Future enhancements
 
-- Multilingual UI (replies can already be set to any language in Settings)
+The brief's four future enhancements are already built: **multilingual** replies and one-click translation, **voice** input and read-aloud, a **Google Calendar** action, and **custom AI tuning** through custom instructions. Next ideas:
+
+- Translated interface (menus and buttons) in addition to translated replies
 - Server-side speech-to-text / text-to-speech for browsers without the Web Speech API
-- Integrations such as Google Calendar for scheduling
+- Two-way Google Calendar sync through OAuth (read your schedule, create events directly)
 - Retrieval over custom documents (RAG) for specialised assistants
 - File and image uploads in chat
 - OAuth sign-in (Google / GitHub)

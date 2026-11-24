@@ -32,7 +32,8 @@ All protected endpoints need `Authorization: Bearer <token>`. Errors are returne
 | POST | `/auth/login` | `{ email, password }` | `{ token, user }` |
 | GET | `/auth/me` | | `{ user }` |
 | PATCH | `/auth/me` | `{ name?, preferences? }` | `{ user }` |
-| POST | `/auth/me/password` | `{ currentPassword, newPassword }` | `{ ok: true }` |
+| POST | `/auth/me/password` | `{ currentPassword, newPassword }` | `{ ok: true, token }` (all other sessions are signed out; use the new token) |
+| POST | `/auth/logout-all` | | `{ ok: true, token }` (revokes every other session and disconnects their sockets) |
 
 Password rules: 8+ characters, at least one letter and one number. The first account created, and any email in `ADMIN_EMAILS`, becomes an admin.
 
@@ -46,9 +47,12 @@ Password rules: 8+ characters, at least one letter and one number. The first acc
   "defaultCategory": "casual | professional | creative | coding",
   "language": "auto | English | Hindi | …",
   "responseLength": "concise | balanced | detailed",
-  "sendOnEnter": true
+  "sendOnEnter": true,
+  "customInstructions": "Up to 1,500 characters added to every system prompt"
 }
 ```
+
+Tokens carry a `tv` (token version) claim. Changing the password or calling `/auth/logout-all` bumps the user's version, so older tokens get `401 You were signed out`.
 
 ## Conversations
 
@@ -63,12 +67,13 @@ Password rules: 8+ characters, at least one letter and one number. The first acc
 | GET | `/conversations/:id/export` | | Markdown file |
 | POST | `/conversations/:id/messages` | `{ content }` | `201 { conversation, message }` (non-streaming; good for Postman) |
 | PATCH | `/conversations/:id/messages/:messageId/rating` | `{ rating: -1 \| 0 \| 1, feedback? }` | `{ message }` |
+| POST | `/conversations/:id/messages/:messageId/translate` | `{ language }` | `{ language, translation, cached }` (cached; `502` if the AI provider fails) |
 
 ## Admin (role `admin` only)
 
 | Method | Path | Returns |
 | --- | --- | --- |
-| GET | `/admin/stats?days=14` | Totals, daily activity, hourly activity, chat modes, ratings, top users, recent feedback and system info |
+| GET | `/admin/stats?days=14` | Totals, daily activity, hourly activity, chat modes, ratings, top users, recent feedback, recent activity (latest conversations with user names) and system info |
 | GET | `/admin/users?search=` | `{ users }` with message counts |
 | PATCH | `/admin/users/:id/role` | Body `{ role: "user" \| "admin" }` → `{ user }` |
 
@@ -109,7 +114,7 @@ If `conversationId` is omitted, a new conversation is created.
 ## Data model
 
 ```
-User          { name, email (unique), passwordHash, role, preferences{…}, lastActiveAt, createdAt }
+User          { name, email (unique), passwordHash, role, preferences{…}, tokenVersion, lastActiveAt, createdAt }
 Conversation  { user → User, title, category, pinned, messageCount, lastMessageAt }
               index: { user, pinned, lastMessageAt }
 Message       { conversation → Conversation, user → User, role, content,
@@ -124,3 +129,7 @@ Message       { conversation → Conversation, user → User, role, content,
 - Messages up to 8,000 characters; JSON bodies up to 100 KB.
 - AI calls time out after `AI_TIMEOUT_MS` (default 60 s) and retry once on 429/5xx before any text has streamed.
 - Identical first questions in the same mode are served from an in-memory LRU cache for an hour.
+
+## Postman
+
+Import [`nova.postman_collection.json`](nova.postman_collection.json). Set `baseUrl` (default `http://localhost:4000/api`); the login request saves `token`, and creating a chat saves `conversationId` and `messageId` for the requests after it.
