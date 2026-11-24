@@ -50,6 +50,7 @@ export function gatewayProvider({ model, fallbackModels = [], maxTokens }) {
         yield* demo.stream(args);
         return;
       }
+      let lastRateLimit = null;
       for (const m of models) {
         if ((blockedUntil.get(m) || 0) > Date.now()) continue;
         // Up to two attempts per model: a reasoning model can return an empty reply.
@@ -68,6 +69,13 @@ export function gatewayProvider({ model, fallbackModels = [], maxTokens }) {
               logger.warn(`AI Gateway model ${m}: ${err.message}`);
               continue;
             }
+            if (!started && err.status === 429) {
+              // Free-tier models have small per-minute limits: try the next model.
+              logger.warn(`AI Gateway model ${m} rate limited: ${err.message}`);
+              lastRateLimit = err;
+              blockedUntil.set(m, Date.now() + 30 * 1000);
+              break;
+            }
             if (!started && [401, 402, 403].includes(err.status)) {
               logger.warn(`AI Gateway model ${m} unavailable: ${err.message}`);
               blockedUntil.set(m, Date.now() + 10 * 60 * 1000);
@@ -77,6 +85,8 @@ export function gatewayProvider({ model, fallbackModels = [], maxTokens }) {
           }
         }
       }
+      // Every model is busy: report the rate limit so the user can retry shortly.
+      if (lastRateLimit) throw lastRateLimit;
       // Nothing usable on the gateway: keep the app working with the demo model.
       logger.warn('AI Gateway has no usable model, using the demo model');
       yield* demo.stream(args);

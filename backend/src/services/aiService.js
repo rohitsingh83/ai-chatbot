@@ -53,7 +53,7 @@ export function getProvider() {
       baseUrl: ai.openaiBaseUrl,
     });
   } else if (ai.provider === 'gateway') {
-    provider = gatewayProvider({ model: ai.gatewayModel, fallbackModels: ai.gatewayFallbackModels, maxTokens: ai.maxTokens });
+    provider = gatewayProvider({ model: ai.gatewayModel, fallbackModels: ai.gatewayFallbackModels, maxTokens: ai.gatewayMaxTokens });
   } else {
     provider = demoProvider();
   }

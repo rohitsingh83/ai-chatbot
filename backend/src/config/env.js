@@ -34,6 +34,8 @@ export const env = {
     // Tried in order when the main model is not available on the team's plan (e.g. AI Gateway free tier).
     gatewayFallbackModels: list(process.env.AI_GATEWAY_FALLBACK_MODELS || 'nvidia/nemotron-3.5-lightning-free,reflection/beam-free'),
     maxTokens: Number(process.env.AI_MAX_TOKENS) || 1024,
+    // Reasoning models on the gateway think before answering, so they need a bigger budget.
+    gatewayMaxTokens: Number(process.env.AI_GATEWAY_MAX_TOKENS) || 4096,
     timeoutMs: Number(process.env.AI_TIMEOUT_MS) || 60000,
     historyLimit: Number(process.env.AI_HISTORY_LIMIT) || 20,
   },
