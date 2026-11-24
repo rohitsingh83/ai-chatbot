@@ -5,6 +5,7 @@ import { logger } from '../utils/logger.js';
 import { anthropicProvider } from './providers/anthropic.js';
 import { openaiProvider } from './providers/openai.js';
 import { demoProvider } from './providers/demo.js';
+import { gatewayProvider } from './providers/gateway.js';
 
 const CATEGORY_STYLE = {
   casual: 'Be warm, friendly and conversational. Light use of emoji is fine.',
@@ -51,6 +52,8 @@ export function getProvider() {
       maxTokens: ai.maxTokens,
       baseUrl: ai.openaiBaseUrl,
     });
+  } else if (ai.provider === 'gateway') {
+    provider = gatewayProvider({ model: ai.gatewayModel, maxTokens: ai.maxTokens });
   } else {
     provider = demoProvider();
   }

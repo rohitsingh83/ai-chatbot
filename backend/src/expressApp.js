@@ -11,10 +11,15 @@ import conversationRoutes from './routes/conversations.js';
 import adminRoutes from './routes/admin.js';
 import { getProvider } from './services/aiService.js';
 import { getStore } from './store/index.js';
+import { rememberOidcToken } from './services/providers/gateway.js';
 
 export function createApp() {
   const app = express();
   app.set('trust proxy', 1); // behind Render/Railway proxies
+  app.use((req, _res, next) => {
+    rememberOidcToken(req.headers);
+    next();
+  });
   app.use(helmet());
   app.use(
     cors({

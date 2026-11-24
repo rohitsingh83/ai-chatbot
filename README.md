@@ -37,7 +37,7 @@ Next.js · Tailwind CSS · Node.js · Express · Socket.io · MongoDB · JWT · 
 | 🔐 | **User authentication** | Sign up / log in with JWT. Passwords hashed with bcrypt, password strength meter, sessions restored on reload, automatic logout when a token expires. Changing your password signs out every other device, and **Sign out other devices** revokes all old sessions instantly (token versioning, open sockets are disconnected). |
 | 💬 | **Chat interface** | Responsive Tailwind UI with Markdown, tables and syntax-highlighted code blocks (with copy buttons), auto-growing input, suggestion cards, scroll-to-latest, keyboard shortcuts. |
 | ⚡ | **Real-time streaming** | Socket.io streams each token as it is generated. A "thinking" state, a **Stop** button that keeps the partial answer, **Regenerate**, and live sync across every open tab. Falls back to plain HTTP if WebSockets are unavailable. |
-| 🧠 | **AI-powered responses** | Pluggable providers: **Anthropic Claude**, **OpenAI** (or any OpenAI-compatible API such as Groq, OpenRouter or Ollama), and an offline **demo model** so the whole app works with no API key. |
+| 🧠 | **AI-powered responses** | Pluggable providers: **Vercel AI Gateway** (Claude, GPT, Gemini and more; on Vercel it needs no API key), **Anthropic Claude**, **OpenAI** (or any OpenAI-compatible API such as Groq, OpenRouter or Ollama), and an offline **demo model** so the whole app works with no API key. The live demo answers with Claude Haiku 5.5 through AI Gateway. |
 | 🗂️ | **Chat history** | Conversations and messages stored in MongoDB with indexes. Sidebar grouped by Today / Yesterday / Previous 7 days, full-text search across titles *and* message content, rename, pin, delete, export to Markdown. Titles are generated from the first message. |
 | 🎨 | **Personalisation** | Rename the assistant, light / dark / system theme, five accent colours, default chat mode, reply language, response length, and "send on Enter". Changes apply instantly. |
 | 🧩 | **Custom AI tuning** | Personal **custom instructions** ("I'm a CS student, explain with Java examples") that are added to every conversation's system prompt. |
@@ -161,7 +161,8 @@ The first account created becomes an admin. To make more admins, list their emai
 | `JWT_SECRET` | dev value | **Required in production** |
 | `JWT_EXPIRES_IN` | `7d` | Session length |
 | `ADMIN_EMAILS` | | Emails that become admins on sign-up |
-| `AI_PROVIDER` | auto | `anthropic`, `openai` or `demo` |
+| `AI_PROVIDER` | auto | `gateway`, `anthropic`, `openai` or `demo` |
+| `AI_GATEWAY_API_KEY` / `AI_GATEWAY_MODEL` | / `anthropic/claude-haiku-5.5` | Vercel AI Gateway. No key needed when deployed on Vercel (uses the project's OIDC token) |
 | `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` | / `claude-sonnet-5-5` | Claude settings |
 | `OPENAI_API_KEY` / `OPENAI_MODEL` / `OPENAI_BASE_URL` | / `gpt-4o-mini` / OpenAI | OpenAI or compatible settings |
 | `AI_MAX_TOKENS`, `AI_TIMEOUT_MS`, `AI_HISTORY_LIMIT` | `1024`, `60000`, `20` | Generation limits |
@@ -176,7 +177,7 @@ The first account created becomes an admin. To make more admins, list their emai
 ## Testing
 
 ```bash
-npm test            # 25 backend tests: auth, session revocation, validation, ownership, chat flow,
+npm test            # 26 backend tests: auth, session revocation, validation, ownership, chat flow,
                     # ratings, translation, export, admin, AI caching / retry / stop,
                     # Socket.io streaming and multi-tab sync
 npm run lint        # frontend ESLint

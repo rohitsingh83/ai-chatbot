@@ -96,3 +96,26 @@ test('custom instructions reach the system prompt', () => {
   assert.match(s, /<custom_instructions>\nAlways answer like a pirate\n<\/custom_instructions>/);
   assert.doesNotMatch(buildSystemPrompt({}), /custom_instructions/);
 });
+
+test('AI Gateway provider uses the latest Vercel OIDC token', async () => {
+  const { gatewayProvider, rememberOidcToken } = await import('../src/services/providers/gateway.js');
+  const realFetch = globalThis.fetch;
+  let seen;
+  globalThis.fetch = async (url, init) => {
+    seen = { url, auth: init.headers.authorization, body: JSON.parse(init.body) };
+    const body = 'data: {"choices":[{"delta":{"content":"Hi"}}]}\n\ndata: [DONE]\n\n';
+    return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } });
+  };
+  try {
+    rememberOidcToken({ 'x-vercel-oidc-token': 'oidc-123' });
+    const p = gatewayProvider({ model: 'anthropic/claude-haiku-5.5', maxTokens: 50 });
+    let out = '';
+    for await (const t of p.stream({ system: 'sys', messages: [{ role: 'user', content: 'Hello' }] })) out += t;
+    assert.equal(out, 'Hi');
+    assert.equal(seen.url, 'https://ai-gateway.vercel.sh/v1/chat/completions');
+    assert.equal(seen.auth, 'Bearer oidc-123');
+    assert.equal(seen.body.model, 'anthropic/claude-haiku-5.5');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});

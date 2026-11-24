@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import { rememberOidcToken } from '../services/providers/gateway.js';
 import { env } from '../config/env.js';
 import { userFromToken } from '../middleware/auth.js';
 import { createSocketLimiter } from '../middleware/rateLimit.js';
@@ -33,6 +34,7 @@ export function attachSocket(httpServer) {
   const active = new Map(); // conversationId -> AbortController
 
   io.use(async (socket, next) => {
+    rememberOidcToken(socket.handshake.headers);
     try {
       socket.data.user = await userFromToken(socket.handshake.auth?.token);
       next();

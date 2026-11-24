@@ -15,15 +15,22 @@ export const env = {
   clientOrigins: list(process.env.CLIENT_ORIGIN || 'http://localhost:3000'),
   adminEmails: list(process.env.ADMIN_EMAILS).map((e) => e.toLowerCase()),
   ai: {
-    // "anthropic" | "openai" | "demo"; auto-detected from keys when unset.
+    // "anthropic" | "openai" | "gateway" (Vercel AI Gateway) | "demo"; auto-detected from keys when unset.
     provider:
       process.env.AI_PROVIDER ||
-      (process.env.ANTHROPIC_API_KEY ? 'anthropic' : process.env.OPENAI_API_KEY ? 'openai' : 'demo'),
+      (process.env.ANTHROPIC_API_KEY
+        ? 'anthropic'
+        : process.env.OPENAI_API_KEY
+          ? 'openai'
+          : process.env.AI_GATEWAY_API_KEY
+            ? 'gateway'
+            : 'demo'),
     anthropicKey: process.env.ANTHROPIC_API_KEY || '',
     anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
     openaiKey: process.env.OPENAI_API_KEY || '',
     openaiModel: process.env.OPENAI_MODEL || 'gpt-4o-mini',
     openaiBaseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+    gatewayModel: process.env.AI_GATEWAY_MODEL || 'anthropic/claude-haiku-5.5',
     maxTokens: Number(process.env.AI_MAX_TOKENS) || 1024,
     timeoutMs: Number(process.env.AI_TIMEOUT_MS) || 60000,
     historyLimit: Number(process.env.AI_HISTORY_LIMIT) || 20,
