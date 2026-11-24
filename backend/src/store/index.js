@@ -17,7 +17,9 @@ export async function initStore() {
     logger.info('Connected to MongoDB');
   } else {
     store = createMemoryStore({
-      file: env.isTest ? null : process.env.DATA_FILE || path.join(here, '../../data/dev-db.json'),
+      file: env.isTest ? null : process.env.DATA_FILE ||
+        // Serverless hosts (Vercel) only allow writes under /tmp.
+        (process.env.VERCEL ? '/tmp/nova-db.json' : path.join(here, '../../data/dev-db.json')),
     });
     logger.warn('MONGODB_URI not set: using the local file store (fine for demos, not for production)');
   }

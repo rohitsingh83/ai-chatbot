@@ -11,5 +11,6 @@ r.post('/signup', authLimiter, validate(signupSchema), asyncHandler(c.signup));
 r.post('/login', authLimiter, validate(loginSchema), asyncHandler(c.login));
 r.get('/me', requireAuth, asyncHandler(c.me));
 r.patch('/me', requireAuth, validate(profileSchema), asyncHandler(c.updateProfile));
+r.post('/logout-all', requireAuth, asyncHandler(c.logoutAll));
 r.post('/me/password', requireAuth, authLimiter, validate(passwordSchema), asyncHandler(c.changePassword));
 export default r;

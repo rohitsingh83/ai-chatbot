@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Check, KeyRound, Laptop, Moon, Sun, Trash2, UserRound } from "lucide-react";
+import { Check, KeyRound, Laptop, LogOut, Moon, Sparkles, Sun, Trash2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 import { useChat } from "@/lib/chat-context";
@@ -50,11 +50,13 @@ function Segmented<T extends string>({ value, options, onChange }: { value: T; o
 }
 
 export default function SettingsPage() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, replaceToken } = useAuth();
   const { clearAll } = useChat();
   const p = user!.preferences;
   const [name, setName] = useState(user!.name);
   const [botName, setBotName] = useState(p.botName);
+  const [instructions, setInstructions] = useState(p.customInstructions || "");
+  const [signingOut, setSigningOut] = useState(false);
   const [pw, setPw] = useState({ currentPassword: "", newPassword: "" });
   const [pwLoading, setPwLoading] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -151,6 +153,55 @@ export default function SettingsPage() {
             </div>
           </Section>
 
+          <Section
+            title="Custom instructions"
+            description={`Tune ${p.botName} to you. These instructions are added to every conversation.`}
+          >
+            <div className="mb-3 flex flex-wrap gap-2">
+              {[
+                "I'm a computer science student. Explain things simply with examples.",
+                "Always reply in bullet points.",
+                "I'm preparing for interviews. Quiz me at the end of answers.",
+                "Prefer TypeScript and React in code examples.",
+              ].map((ex) => (
+                <button
+                  key={ex}
+                  onClick={() => setInstructions((v) => (v ? `${v}\n${ex}` : ex).slice(0, 1500))}
+                  className="rounded-full border border-line px-3 py-1 text-xs text-muted transition hover:border-accent hover:text-fg"
+                >
+                  + {ex}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value.slice(0, 1500))}
+              rows={5}
+              placeholder="What should the assistant know about you, and how should it respond?"
+              aria-label="Custom instructions"
+              className="w-full resize-y rounded-2xl border border-line bg-elev p-4 text-sm leading-relaxed outline-none focus:border-accent focus-visible:outline-none"
+            />
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-xs tabular-nums text-subtle">{instructions.length.toLocaleString()} / 1,500</span>
+              <div className="flex gap-2">
+                {p.customInstructions && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setInstructions("");
+                      save({ customInstructions: "" }, "Custom instructions cleared");
+                    }}
+                  >
+                    Clear
+                  </Button>
+                )}
+                <Button disabled={instructions.trim() === (p.customInstructions || "")} onClick={() => save({ customInstructions: instructions.trim() }, "Custom instructions saved")}>
+                  <Sparkles className="h-4 w-4" /> Save instructions
+                </Button>
+              </div>
+            </div>
+          </Section>
+
           <Section title="Appearance" description="Changes apply instantly across the app.">
             <div className="space-y-5">
               <div>
@@ -212,16 +263,17 @@ export default function SettingsPage() {
             </div>
           </Section>
 
-          <Section title="Password" description="Use at least 8 characters with a number.">
+          <Section title="Password & sessions" description="Changing your password signs you out everywhere else. Use at least 8 characters with a number.">
             <form
               className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
               onSubmit={async (e) => {
                 e.preventDefault();
                 setPwLoading(true);
                 try {
-                  await api.changePassword(pw);
+                  const r = await api.changePassword(pw);
+                  replaceToken(r.token);
                   setPw({ currentPassword: "", newPassword: "" });
-                  toast.success("Password changed");
+                  toast.success("Password changed. Other devices were signed out.");
                 } catch (err) {
                   toast.error((err as Error).message);
                 } finally {
@@ -235,6 +287,27 @@ export default function SettingsPage() {
                 Update
               </Button>
             </form>
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
+              <p className="text-sm text-muted">Lost a device or used a shared computer? End every other session.</p>
+              <Button
+                variant="secondary"
+                loading={signingOut}
+                onClick={async () => {
+                  setSigningOut(true);
+                  try {
+                    const r = await api.logoutAll();
+                    replaceToken(r.token);
+                    toast.success("Signed out of all other devices");
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  } finally {
+                    setSigningOut(false);
+                  }
+                }}
+              >
+                <LogOut className="h-4 w-4" /> Sign out other devices
+              </Button>
+            </div>
           </Section>
 
           <Section title="Danger zone">

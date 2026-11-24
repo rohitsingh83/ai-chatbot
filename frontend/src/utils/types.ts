@@ -10,6 +10,7 @@ export interface Preferences {
   language: string;
   responseLength: "concise" | "balanced" | "detailed";
   sendOnEnter: boolean;
+  customInstructions: string;
 }
 
 export interface User {
@@ -67,6 +68,7 @@ export interface AdminStats {
   hourly: { hour: number; messages: number }[];
   categories: { category: Category; count: number }[];
   topUsers: { id: string; name: string; email: string; messages: number }[];
+  recentActivity: { id: string; title: string; category: Category; messageCount: number; lastMessageAt: string; userName: string }[];
   recentFeedback: { id: string; rating: number; feedback: string; excerpt: string; userName: string; updatedAt: string }[];
   system: {
     provider: string;

@@ -4,7 +4,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { messageLimiter } from '../middleware/rateLimit.js';
 import { asyncHandler } from '../utils/errors.js';
-import { createConversationSchema, updateConversationSchema, sendMessageSchema, rateSchema } from '../utils/schemas.js';
+import { createConversationSchema, updateConversationSchema, sendMessageSchema, rateSchema, translateSchema } from '../utils/schemas.js';
 
 const r = Router();
 r.use(requireAuth);
@@ -16,5 +16,6 @@ r.patch('/:id', validate(updateConversationSchema), asyncHandler(c.update));
 r.delete('/:id', asyncHandler(c.remove));
 r.get('/:id/export', asyncHandler(c.exportMarkdown));
 r.post('/:id/messages', messageLimiter, validate(sendMessageSchema), asyncHandler(c.postMessage));
+r.post('/:id/messages/:messageId/translate', messageLimiter, validate(translateSchema), asyncHandler(c.translateMessage));
 r.patch('/:id/messages/:messageId/rating', validate(rateSchema), asyncHandler(c.rateMessage));
 export default r;

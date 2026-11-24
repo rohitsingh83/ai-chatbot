@@ -74,7 +74,8 @@ export const api = {
   updateProfile: (body: { name?: string; preferences?: Partial<Preferences> }) =>
     request<{ user: User }>("/auth/me", { method: "PATCH", body }),
   changePassword: (body: { currentPassword: string; newPassword: string }) =>
-    request<{ ok: true }>("/auth/me/password", { method: "POST", body }),
+    request<{ ok: true; token: string }>("/auth/me/password", { method: "POST", body }),
+  logoutAll: () => request<{ ok: true; token: string }>("/auth/logout-all", { method: "POST" }),
 
   // conversations
   conversations: (search = "", signal?: AbortSignal) =>
@@ -89,6 +90,11 @@ export const api = {
   exportConversation: (id: string) => request<string>(`/conversations/${id}/export`, { raw: true }),
   sendMessageRest: (id: string, content: string) =>
     request<{ conversation: Conversation; message: Message }>(`/conversations/${id}/messages`, { method: "POST", body: { content } }),
+  translate: (conversationId: string, messageId: string, language: string) =>
+    request<{ language: string; translation: string; cached: boolean }>(`/conversations/${conversationId}/messages/${messageId}/translate`, {
+      method: "POST",
+      body: { language },
+    }),
   rate: (conversationId: string, messageId: string, rating: -1 | 0 | 1, feedback?: string) =>
     request<{ message: Message }>(`/conversations/${conversationId}/messages/${messageId}/rating`, {
       method: "PATCH",

@@ -358,6 +358,33 @@ export function AdminDashboard() {
             </Card>
           </div>
 
+          <Card delay={0.42}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold">Recent activity</h3>
+                <p className="text-xs text-muted">The latest conversations across all users</p>
+              </div>
+              <span className="flex items-center gap-1.5 text-xs text-emerald-500">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" /> live
+              </span>
+            </div>
+            <ul className="mt-4 divide-y divide-line">
+              {stats.recentActivity.length === 0 && <li className="py-3 text-sm text-subtle">No conversations yet.</li>}
+              {stats.recentActivity.map((a) => (
+                <li key={a.id} className="flex items-center gap-3 py-2.5 text-sm">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-hover">{CATEGORIES.find((c) => c.id === a.category)?.emoji}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{a.title}</div>
+                    <div className="text-xs text-subtle">
+                      {a.userName} · {a.messageCount} message{a.messageCount === 1 ? "" : "s"}
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-xs text-muted">{timeAgo(a.lastMessageAt)}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+
           <Card delay={0.45}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>

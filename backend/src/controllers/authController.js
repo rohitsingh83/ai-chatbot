@@ -4,6 +4,14 @@ import { env } from '../config/env.js';
 import { signToken } from '../middleware/auth.js';
 import { conflict, unauthorized, badRequest } from '../utils/errors.js';
 import { publicUser } from '../store/defaults.js';
+import { disconnectUser } from '../sockets/io.js';
+
+/** Revoke every token the user holds and return a fresh one for this device. */
+async function rotateSessions(store, user, patch = {}) {
+  const updated = await store.users.update(user.id, { ...patch, tokenVersion: (user.tokenVersion || 0) + 1 });
+  disconnectUser(user.id);
+  return signToken(updated);
+}
 
 export async function signup(req, res) {
   const store = getStore();
@@ -39,6 +47,12 @@ export async function changePassword(req, res) {
   const store = getStore();
   const user = await store.users.findById(req.user.id);
   if (!(await bcrypt.compare(req.body.currentPassword, user.passwordHash))) throw badRequest('Current password is incorrect');
-  await store.users.update(user.id, { passwordHash: await bcrypt.hash(req.body.newPassword, 10) });
-  res.json({ ok: true });
+  const token = await rotateSessions(store, user, { passwordHash: await bcrypt.hash(req.body.newPassword, 10) });
+  res.json({ ok: true, token });
+}
+
+export async function logoutAll(req, res) {
+  const store = getStore();
+  const user = await store.users.findById(req.user.id);
+  res.json({ ok: true, token: await rotateSessions(store, user) });
 }

@@ -27,6 +27,7 @@ export const preferencesSchema = z
     language: z.string().trim().min(1).max(40),
     responseLength: z.enum(['concise', 'balanced', 'detailed']),
     sendOnEnter: z.boolean(),
+    customInstructions: z.string().trim().max(1500, 'Custom instructions can be up to 1,500 characters'),
   })
   .partial()
   .strict();
@@ -65,5 +66,7 @@ export const rateSchema = z.object({
   rating: z.union([z.literal(-1), z.literal(0), z.literal(1)]),
   feedback: z.string().trim().max(1000).optional(),
 });
+
+export const translateSchema = z.object({ language: z.string().trim().min(2).max(40) });
 
 export const roleSchema = z.object({ role: z.enum(['user', 'admin']) });

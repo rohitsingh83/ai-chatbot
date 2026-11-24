@@ -13,6 +13,8 @@ const preferencesSchema = new mongoose.Schema(
     language: { type: String, default: 'auto', maxlength: 40 },
     responseLength: { type: String, enum: ['concise', 'balanced', 'detailed'], default: 'balanced' },
     sendOnEnter: { type: Boolean, default: true },
+    // Personal "custom AI tuning": extra instructions added to every system prompt.
+    customInstructions: { type: String, maxlength: 1500, default: '' },
   },
   { _id: false }
 );
@@ -25,6 +27,8 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ['user', 'admin'], default: 'user', index: true },
     preferences: { type: preferencesSchema, default: () => ({}) },
     lastActiveAt: { type: Date, default: Date.now },
+    // Bumped to revoke every issued JWT (password change, "log out everywhere").
+    tokenVersion: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

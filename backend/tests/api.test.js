@@ -4,7 +4,7 @@ import request from 'supertest';
 import { app, store, signup } from './helpers.js';
 
 describe('auth', () => {
-  before(() => store._reset());
+  before(async () => store._reset());
 
   test('first user becomes admin, later users do not', async () => {
     const a = await signup(request);
@@ -128,7 +128,7 @@ describe('conversations and messages', () => {
 
 describe('admin', () => {
   test('stats and users are admin-only', async () => {
-    store._reset();
+    await store._reset();
     const admin = await signup(request);
     const user = await signup(request);
     assert.equal((await request(app).get('/api/admin/stats').set({ Authorization: `Bearer ${user.token}` })).status, 403);
@@ -136,6 +136,7 @@ describe('admin', () => {
     assert.equal(res.status, 200);
     assert.equal(res.body.totals.users, 2);
     assert.equal(res.body.daily.length, 14);
+    assert.ok(Array.isArray(res.body.recentActivity));
     assert.equal(res.body.system.provider, 'demo');
 
     const promoted = await request(app)
@@ -154,4 +155,52 @@ describe('admin', () => {
 test('health and 404', async () => {
   assert.equal((await request(app).get('/api/health')).body.status, 'ok');
   assert.equal((await request(app).get('/api/nope')).status, 404);
+});
+
+describe('sessions, custom instructions and translation', () => {
+  test('changing password signs out other sessions', async () => {
+    const { token, user, password } = await signup(request);
+    const second = (await request(app).post('/api/auth/login').send({ email: user.email, password })).body.token;
+    const res = await request(app)
+      .post('/api/auth/me/password')
+      .set({ Authorization: `Bearer ${token}` })
+      .send({ currentPassword: password, newPassword: 'Another123' });
+    assert.ok(res.body.token, 'this device gets a fresh token');
+    assert.equal((await request(app).get('/api/auth/me').set({ Authorization: `Bearer ${second}` })).status, 401);
+    assert.equal((await request(app).get('/api/auth/me').set({ Authorization: `Bearer ${res.body.token}` })).status, 200);
+  });
+
+  test('log out of all devices', async () => {
+    const { token } = await signup(request);
+    const res = await request(app).post('/api/auth/logout-all').set({ Authorization: `Bearer ${token}` });
+    assert.equal((await request(app).get('/api/auth/me').set({ Authorization: `Bearer ${token}` })).status, 401);
+    assert.equal((await request(app).get('/api/auth/me').set({ Authorization: `Bearer ${res.body.token}` })).status, 200);
+  });
+
+  test('custom instructions are saved and length-limited', async () => {
+    const { token } = await signup(request);
+    const auth = { Authorization: `Bearer ${token}` };
+    const ok = await request(app).patch('/api/auth/me').set(auth).send({ preferences: { customInstructions: 'I am a CS student. Use simple words.' } });
+    assert.equal(ok.body.user.preferences.customInstructions, 'I am a CS student. Use simple words.');
+    const long = await request(app).patch('/api/auth/me').set(auth).send({ preferences: { customInstructions: 'x'.repeat(1501) } });
+    assert.equal(long.status, 400);
+  });
+
+  test('translate a reply', async () => {
+    const { token } = await signup(request);
+    const auth = { Authorization: `Bearer ${token}` };
+    const conv = await request(app).post('/api/conversations').set(auth).send({});
+    const id = conv.body.conversation.id;
+    const sent = await request(app).post(`/api/conversations/${id}/messages`).set(auth).send({ content: 'hello' });
+    const tr = await request(app).post(`/api/conversations/${id}/messages/${sent.body.message.id}/translate`).set(auth).send({ language: 'Hindi' });
+    assert.equal(tr.status, 200);
+    assert.equal(tr.body.language, 'Hindi');
+    assert.ok(tr.body.translation.length > 0);
+    const other = await signup(request);
+    const denied = await request(app)
+      .post(`/api/conversations/${id}/messages/${sent.body.message.id}/translate`)
+      .set({ Authorization: `Bearer ${other.token}` })
+      .send({ language: 'Hindi' });
+    assert.equal(denied.status, 403);
+  });
 });

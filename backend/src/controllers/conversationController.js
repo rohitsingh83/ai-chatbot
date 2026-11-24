@@ -1,5 +1,6 @@
 import { getStore } from '../store/index.js';
 import { getOwnedConversation, sendMessage } from '../services/chatService.js';
+import { translateText } from '../services/aiService.js';
 import { notFound, forbidden } from '../utils/errors.js';
 
 export async function list(req, res) {
@@ -75,4 +76,17 @@ export async function rateMessage(req, res) {
   const patch = { rating: req.body.rating };
   if (req.body.feedback !== undefined) patch.feedback = req.body.feedback;
   res.json({ message: await store.messages.update(msg.id, patch) });
+}
+
+/** Translate one message of the conversation into another language (multilingual support). */
+export async function translateMessage(req, res) {
+  await getOwnedConversation(req.user.id, req.params.id);
+  const msg = await getStore().messages.findById(req.params.messageId);
+  if (!msg || msg.conversation !== req.params.id) throw notFound('Message not found');
+  try {
+    const result = await translateText({ text: msg.content, language: req.body.language });
+    res.json({ language: req.body.language, translation: result.text, cached: result.cached });
+  } catch (err) {
+    res.status(502).json({ error: err.name === 'TimeoutError' ? 'Translation timed out. Please try again.' : 'Translation failed. Please try again.' });
+  }
 }

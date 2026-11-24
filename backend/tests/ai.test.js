@@ -90,3 +90,9 @@ test('titles are short and clean', () => {
   assert.equal(makeTitle('**how** do i center a div in css please help me now'), 'How do i center a div in');
   assert.equal(makeTitle('   '), 'New chat');
 });
+
+test('custom instructions reach the system prompt', () => {
+  const s = buildSystemPrompt({ customInstructions: 'Always answer like a pirate' });
+  assert.match(s, /<custom_instructions>\nAlways answer like a pirate\n<\/custom_instructions>/);
+  assert.doesNotMatch(buildSystemPrompt({}), /custom_instructions/);
+});

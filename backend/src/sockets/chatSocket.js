@@ -7,6 +7,7 @@ import { sendMessageSchema } from '../utils/schemas.js';
 import { getStore } from '../store/index.js';
 import { logger } from '../utils/logger.js';
 import * as presence from './presence.js';
+import { setIO } from './io.js';
 
 /**
  * Events (client -> server)
@@ -27,6 +28,7 @@ export function attachSocket(httpServer) {
     cors: { origin: env.clientOrigins, credentials: true },
     maxHttpBufferSize: 64 * 1024,
   });
+  setIO(io);
   const limiter = createSocketLimiter();
   const active = new Map(); // conversationId -> AbortController
 

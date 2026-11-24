@@ -192,7 +192,15 @@ export function demoProvider() {
     model: 'nova-demo-1',
     async *stream({ messages, signal, meta = {} }) {
       const last = messages[messages.length - 1]?.content || '';
-      const reply = compose({ text: last, history: messages, ...meta });
+      const reply =
+        meta.task === 'translate'
+          ? `> 🌐 *Demo mode can't really translate to ${meta.language}. Add an \`ANTHROPIC_API_KEY\` or \`OPENAI_API_KEY\` to the backend for real translations.*\n\n${last}`
+          : compose({ text: last, history: messages, ...meta });
+      if (meta.task === 'translate') {
+        await sleep(400, signal);
+        yield reply;
+        return;
+      }
       await sleep(350, signal); // "thinking"
       const tokens = reply.match(/\s+|[^\s]+/g) || [];
       for (const tok of tokens) {

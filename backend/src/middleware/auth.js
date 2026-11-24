@@ -5,7 +5,7 @@ import { unauthorized, forbidden } from '../utils/errors.js';
 import { publicUser } from '../store/defaults.js';
 
 export const signToken = (user) =>
-  jwt.sign({ sub: user.id, role: user.role }, env.jwtSecret, { expiresIn: env.jwtExpiresIn });
+  jwt.sign({ sub: user.id, role: user.role, tv: user.tokenVersion || 0 }, env.jwtSecret, { expiresIn: env.jwtExpiresIn });
 
 /** Resolve a JWT to a user, or throw 401. Shared by HTTP and Socket.io. */
 export async function userFromToken(token) {
@@ -18,6 +18,8 @@ export async function userFromToken(token) {
   }
   const user = await getStore().users.findById(payload.sub);
   if (!user) throw unauthorized('Account no longer exists');
+  // Tokens issued before a password change or "log out everywhere" are rejected.
+  if ((payload.tv || 0) !== (user.tokenVersion || 0)) throw unauthorized('You were signed out. Please log in again.');
   return publicUser(user);
 }
 

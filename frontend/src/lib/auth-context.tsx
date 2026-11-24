@@ -13,6 +13,8 @@ type AuthState = {
   login: (email: string, password: string) => Promise<User>;
   signup: (name: string, email: string, password: string) => Promise<User>;
   logout: () => void;
+  /** Swap in a fresh token after the server revoked the old ones (password change, log out everywhere). */
+  replaceToken: (token: string) => void;
   updateUser: (patch: { name?: string; preferences?: Partial<Preferences> }) => Promise<User>;
 };
 
@@ -87,6 +89,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return r.user;
       },
       logout,
+      replaceToken(t) {
+        tokenStore.set(t);
+        setToken(t);
+      },
       async updateUser(patch) {
         const prev = user;
         if (prev && patch.preferences) {

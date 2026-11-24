@@ -156,6 +156,7 @@ export async function createMongoStore(uri) {
         top,
         hourlyAgg,
         feedback,
+        activity,
       ] = await Promise.all([
         User.countDocuments(),
         Conversation.countDocuments(),
@@ -193,6 +194,7 @@ export async function createMongoStore(uri) {
           .limit(8)
           .populate('user', 'name')
           .lean(),
+        Conversation.find().sort({ lastMessageAt: -1 }).limit(10).populate('user', 'name').lean(),
       ]);
 
       const r = Object.fromEntries(ratingAgg.map((x) => [x._id, x.n]));
@@ -236,6 +238,14 @@ export async function createMongoStore(uri) {
           excerpt: m.content.slice(0, 160),
           userName: m.user?.name || 'Unknown',
           updatedAt: m.updatedAt.toISOString(),
+        })),
+        recentActivity: activity.map((c) => ({
+          id: String(c._id),
+          title: c.title,
+          category: c.category,
+          messageCount: c.messageCount,
+          lastMessageAt: c.lastMessageAt.toISOString(),
+          userName: c.user?.name || 'Deleted user',
         })),
       };
     },

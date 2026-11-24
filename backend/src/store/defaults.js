@@ -6,6 +6,7 @@ export const defaultPreferences = () => ({
   language: 'auto',
   responseLength: 'balanced',
   sendOnEnter: true,
+  customInstructions: '',
 });
 
 export const DAY = 24 * 60 * 60 * 1000;
@@ -23,6 +24,6 @@ export function lastDays(days, now = new Date()) {
 /** Strip secrets before a user leaves the store layer. */
 export function publicUser(u) {
   if (!u) return null;
-  const { passwordHash, ...rest } = u;
+  const { passwordHash, tokenVersion, ...rest } = u;
   return rest;
 }

@@ -1,8 +1,9 @@
 "use client";
 
-import { memo, useState } from "react";
-import { motion } from "motion/react";
-import { AlertTriangle, Check, Copy, RotateCcw, ThumbsDown, ThumbsUp, Volume2, VolumeX, Zap } from "lucide-react";
+import { memo, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { AlertTriangle, CalendarPlus, Check, Copy, Languages, Loader2, RotateCcw, ThumbsDown, ThumbsUp, Volume2, VolumeX, X, Zap } from "lucide-react";
+import { api } from "@/services/api";
 import { toast } from "sonner";
 import { Markdown } from "./Markdown";
 import { Orb } from "@/components/ui/Logo";
@@ -11,6 +12,77 @@ import { Button } from "@/components/ui/Button";
 import { clockTime, initials } from "@/utils/format";
 import { cn } from "@/utils/cn";
 import type { Message } from "@/utils/types";
+
+const TRANSLATE_TO = ["English", "Hindi", "Spanish", "French", "German", "Japanese", "Chinese", "Arabic", "Portuguese", "Bengali", "Tamil"];
+
+/** Strip Markdown so the text reads cleanly outside the app. */
+const plainText = (md: string) =>
+  md
+    .replace(/```[\s\S]*?```/g, "[code]")
+    .replace(/[#*_`>|]/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+/** Google Calendar "create event" link, prefilled from a reply (no OAuth needed). */
+function calendarUrl(content: string) {
+  const text = plainText(content);
+  const title = text.split("\n").find((l) => l.trim().length > 3)?.trim().slice(0, 80) || "Nova reminder";
+  const params = new URLSearchParams({ action: "TEMPLATE", text: title, details: `${text.slice(0, 1500)}\n\nSaved from Nova` });
+  return `https://calendar.google.com/calendar/render?${params}`;
+}
+
+function TranslateMenu({ onPick, busy }: { onPick: (lang: string) => void; busy: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [up, setUp] = useState(true);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+  return (
+    <div ref={ref} className="relative">
+      <ActionButton
+        label="Translate"
+        onClick={() => {
+          // Open upwards unless the button is close to the top of the screen.
+          setUp((ref.current?.getBoundingClientRect().top ?? 999) > 340);
+          setOpen((o) => !o);
+        }}
+        active={open}
+      >
+        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Languages className="h-3.5 w-3.5" />}
+      </ActionButton>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.97 }}
+            className={cn("absolute left-0 z-30 w-44 rounded-2xl border border-line bg-panel-solid p-1.5 shadow-2xl", up ? "bottom-9" : "top-9")}
+          >
+            <div className="px-2.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-subtle">Translate to</div>
+            <div className="max-h-60 overflow-y-auto">
+              {TRANSLATE_TO.map((l) => (
+                <button
+                  key={l}
+                  onClick={() => {
+                    setOpen(false);
+                    onPick(l);
+                  }}
+                  className="block w-full rounded-lg px-2.5 py-1.5 text-left text-sm hover:bg-hover"
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 type Props = {
   message: Message;
@@ -26,6 +98,20 @@ export const MessageBubble = memo(function MessageBubble({ message: m, botName, 
   const [speaking, setSpeaking] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedback, setFeedback] = useState(m.feedback || "");
+  const [translation, setTranslation] = useState<{ language: string; text: string } | null>(null);
+  const [translating, setTranslating] = useState(false);
+
+  const translate = async (language: string) => {
+    setTranslating(true);
+    try {
+      const r = await api.translate(m.conversation, m.id, language);
+      setTranslation({ language: r.language, text: r.translation });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setTranslating(false);
+    }
+  };
 
   if (m.role === "user") {
     return (
@@ -100,6 +186,28 @@ export const MessageBubble = memo(function MessageBubble({ message: m, botName, 
         ) : (
           <Markdown content={m.content} />
         )}
+        <AnimatePresence>
+          {translation && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-3 overflow-hidden rounded-2xl border border-[rgb(var(--accent)/0.3)] bg-[rgb(var(--accent)/0.05)]"
+            >
+              <div className="flex items-center justify-between border-b border-[rgb(var(--accent)/0.2)] px-4 py-2 text-xs font-medium text-accent">
+                <span className="flex items-center gap-1.5">
+                  <Languages className="h-3.5 w-3.5" /> Translated to {translation.language}
+                </span>
+                <button onClick={() => setTranslation(null)} className="rounded p-0.5 hover:bg-hover" aria-label="Hide translation">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <div className="px-4 py-3">
+                <Markdown content={translation.text} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {!m.error && (
           <div className={cn("mt-2 flex items-center gap-0.5 transition", isLast || m.rating !== 0 ? "opacity-100" : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100")}>
             <ActionButton label={copied ? "Copied" : "Copy"} onClick={copy}>
@@ -113,6 +221,10 @@ export const MessageBubble = memo(function MessageBubble({ message: m, botName, 
             </ActionButton>
             <ActionButton label={speaking ? "Stop reading" : "Read aloud"} onClick={speak} active={speaking}>
               {speaking ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+            </ActionButton>
+            <TranslateMenu onPick={translate} busy={translating} />
+            <ActionButton label="Add to Google Calendar" onClick={() => window.open(calendarUrl(m.content), "_blank", "noopener,noreferrer")}>
+              <CalendarPlus className="h-3.5 w-3.5" />
             </ActionButton>
             {isLast && onRegenerate && (
               <ActionButton label="Regenerate" onClick={onRegenerate}>

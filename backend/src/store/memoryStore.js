@@ -40,6 +40,7 @@ export function createMemoryStore({ file } = {}) {
         email: email.toLowerCase(),
         passwordHash,
         role,
+        tokenVersion: 0,
         preferences: { ...defaultPreferences(), ...preferences },
         lastActiveAt: createdAt,
         createdAt,
@@ -229,6 +230,17 @@ export function createMemoryStore({ file } = {}) {
           userName: db.users.find((u) => u.id === m.user)?.name || 'Unknown',
           updatedAt: m.updatedAt,
         }));
+      const recentActivity = [...db.conversations]
+        .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
+        .slice(0, 10)
+        .map((c) => ({
+          id: c.id,
+          title: c.title,
+          category: c.category,
+          messageCount: c.messageCount,
+          lastMessageAt: c.lastMessageAt,
+          userName: db.users.find((u) => u.id === c.user)?.name || 'Deleted user',
+        }));
       const latencies = assistant.filter((m) => !m.cached && m.latencyMs > 0).map((m) => m.latencyMs);
       return {
         totals: {
@@ -247,6 +259,7 @@ export function createMemoryStore({ file } = {}) {
         categories: Object.entries(categories).map(([category, count]) => ({ category, count })),
         topUsers,
         recentFeedback,
+        recentActivity,
       };
     },
   };
