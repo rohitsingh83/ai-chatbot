@@ -1,6 +1,6 @@
 import http from 'node:http';
 import { initStore } from './store/index.js';
-import { createApp } from './app.js';
+import { createApp } from './expressApp.js';
 import { attachSocket } from './sockets/chatSocket.js';
 import { getProvider } from './services/aiService.js';
 import { logger } from './utils/logger.js';

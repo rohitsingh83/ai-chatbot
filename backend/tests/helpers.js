@@ -4,7 +4,7 @@ process.env.AI_PROVIDER = 'demo';
 
 const { createMemoryStore } = await import('../src/store/memoryStore.js');
 const { setStore } = await import('../src/store/index.js');
-const { createApp } = await import('../src/app.js');
+const { createApp } = await import('../src/expressApp.js');
 
 // Runs against the in-memory store by default, or a real MongoDB when TEST_MONGODB_URI is set (CI does both).
 async function makeStore() {
