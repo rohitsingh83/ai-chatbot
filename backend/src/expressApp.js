@@ -9,6 +9,7 @@ import { notFoundHandler, errorHandler } from './middleware/error.js';
 import authRoutes from './routes/auth.js';
 import conversationRoutes from './routes/conversations.js';
 import adminRoutes from './routes/admin.js';
+import fileRoutes from './routes/files.js';
 import { getProvider } from './services/aiService.js';
 import { getStore } from './store/index.js';
 import { rememberOidcToken } from './services/providers/gateway.js';
@@ -32,18 +33,19 @@ export function createApp() {
     })
   );
   app.use(compression({ filter: (req, res) => !req.headers['x-no-compression'] && compression.filter(req, res) }));
-  app.use(express.json({ limit: '100kb' }));
+  app.use(express.json({ limit: '1mb' }));
   if (!env.isTest) app.use(morgan(env.isProd ? 'combined' : 'dev'));
 
   app.get('/api/health', (_req, res) => {
     const p = getProvider();
-    res.json({ status: 'ok', provider: p.name, model: p.model, storage: getStore().kind, time: new Date().toISOString() });
+    res.json({ status: 'ok', provider: p.name, model: p.model, tools: env.ai.tools && !!p.supportsTools, storage: getStore().kind, time: new Date().toISOString() });
   });
 
   app.use('/api', apiLimiter);
   app.use('/api/auth', authRoutes);
   app.use('/api/conversations', conversationRoutes);
   app.use('/api/admin', adminRoutes);
+  app.use('/api/files', fileRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

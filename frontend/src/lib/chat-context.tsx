@@ -5,10 +5,10 @@ import { io, type Socket } from "socket.io-client";
 import { toast } from "sonner";
 import { api } from "@/services/api";
 import { API_URL } from "@/utils/constants";
-import type { Category, Conversation, Message } from "@/utils/types";
+import type { Attachment, Category, Conversation, Message, ToolStep } from "@/utils/types";
 import { useAuth } from "./auth-context";
 
-export type StreamState = { text: string; phase: "thinking" | "streaming" };
+export type StreamState = { text: string; phase: "thinking" | "streaming"; tools?: ToolStep[] };
 export type ConnectionState = "connecting" | "online" | "offline";
 
 type ChatState = {
@@ -21,7 +21,7 @@ type ChatState = {
   streams: Record<string, StreamState>;
   loadConversation: (id: string) => Promise<void>;
   createConversation: (category: Category) => Promise<Conversation>;
-  send: (conversationId: string, content: string) => Promise<void>;
+  send: (conversationId: string, content: string, attachments?: Attachment[]) => Promise<void>;
   regenerate: (conversationId: string) => Promise<void>;
   stop: (conversationId: string) => void;
   rate: (conversationId: string, messageId: string, rating: -1 | 0 | 1, feedback?: string) => Promise<void>;
@@ -81,7 +81,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setStreams((s) => ({ ...s, [conversationId]: { text: "", phase: "thinking" } }))
     );
     socket.on("chat:token", ({ conversationId, token: t }: { conversationId: string; token: string }) =>
-      setStreams((s) => ({ ...s, [conversationId]: { text: (s[conversationId]?.text || "") + t, phase: "streaming" } }))
+      setStreams((s) => ({ ...s, [conversationId]: { ...s[conversationId], text: (s[conversationId]?.text || "") + t, phase: "streaming" } }))
+    );
+    socket.on("chat:tool", ({ conversationId, step }: { conversationId: string; step: ToolStep }) =>
+      setStreams((s) => {
+        const cur = s[conversationId] || { text: "", phase: "thinking" as const };
+        const tools = [...(cur.tools || []).filter((x) => x.id !== step.id), step];
+        return { ...s, [conversationId]: { ...cur, tools } };
+      })
     );
     socket.on("chat:done", ({ conversationId, message }: { conversationId: string; message: Message }) => {
       appendMessage(message);
@@ -138,7 +145,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return conversation;
   }, [upsertConversation]);
 
-  const send = useCallback(async (conversationId: string, content: string) => {
+  const send = useCallback(async (conversationId: string, content: string, attachments: Attachment[] = []) => {
     const clientId = `c_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const optimistic: Message = {
       id: clientId,
@@ -147,6 +154,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       conversation: conversationId,
       role: "user",
       content,
+      ...(attachments.length ? { attachments } : {}),
       rating: 0,
       feedback: "",
       createdAt: new Date().toISOString(),
@@ -155,7 +163,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     const socket = socketRef.current;
     if (socket?.connected) {
-      const ack = await socket.timeout(15000).emitWithAck("chat:send", { conversationId, content, clientId }).catch(() => ({
+      const ack = await socket.timeout(15000).emitWithAck("chat:send", { conversationId, content, attachments, clientId }).catch(() => ({
         ok: false,
         error: "The server didn't respond in time.",
       }));
@@ -169,7 +177,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     // Fallback when WebSockets are unavailable: plain HTTP request/response.
     setStreams((s) => ({ ...s, [conversationId]: { text: "", phase: "thinking" } }));
     try {
-      const r = await api.sendMessageRest(conversationId, content);
+      const r = await api.sendMessageRest(conversationId, content, attachments);
       loaded.current.delete(conversationId);
       await loadConversation(conversationId);
       upsertConversation(r.conversation);

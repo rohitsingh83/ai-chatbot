@@ -12,7 +12,7 @@ import { setIO } from './io.js';
 
 /**
  * Events (client -> server)
- *   chat:send        { conversationId?, content, clientId }    ack({ ok, conversationId } | { ok:false, error })
+ *   chat:send        { conversationId?, content, attachments?, clientId }    ack({ ok, conversationId } | { ok:false, error })
  *   chat:regenerate  { conversationId }                         ack(...)
  *   chat:stop        { conversationId }
  *
@@ -21,13 +21,14 @@ import { setIO } from './io.js';
  *   chat:user-message  { message, clientId }            the stored user message
  *   chat:start         { conversationId }               the AI started answering
  *   chat:token         { conversationId, token }        one streamed chunk
+ *   chat:tool          { conversationId, step }         a tool step started or finished, e.g. a web search
  *   chat:done          { conversationId, message }      the stored assistant reply
  *   chat:error         { conversationId, error, message? }
  */
 export function attachSocket(httpServer) {
   const io = new Server(httpServer, {
     cors: { origin: env.clientOrigins, credentials: true },
-    maxHttpBufferSize: 64 * 1024,
+    maxHttpBufferSize: 1024 * 1024, // room for attached files' text
   });
   setIO(io);
   const limiter = createSocketLimiter();
@@ -49,16 +50,17 @@ export function attachSocket(httpServer) {
     socket.join(room);
     presence.join(userId);
 
-    const run = async ({ conversationId, content, clientId, regenerate }, ack = () => {}) => {
+    const run = async ({ conversationId, content, attachments, clientId, regenerate }, ack = () => {}) => {
       const gate = limiter(userId);
       if (!gate.ok) {
         return ack({ ok: false, error: `You're sending messages too fast. Try again in ${Math.ceil(gate.retryInMs / 1000)}s.` });
       }
       if (regenerate && !conversationId) return ack({ ok: false, error: 'Nothing to regenerate' });
       if (!regenerate) {
-        const parsed = sendMessageSchema.safeParse({ content });
+        const parsed = sendMessageSchema.safeParse({ content, attachments: attachments || [] });
         if (!parsed.success) return ack({ ok: false, error: parsed.error.issues[0].message });
         content = parsed.data.content;
+        attachments = parsed.data.attachments;
       }
       if (conversationId && active.has(conversationId)) {
         return ack({ ok: false, error: 'Please wait for the current reply to finish.' });
@@ -75,6 +77,7 @@ export function attachSocket(httpServer) {
           user,
           conversationId,
           content,
+          attachments: attachments || [],
           regenerate,
           signal: controller.signal,
           hooks: {
@@ -90,6 +93,7 @@ export function attachSocket(httpServer) {
               io.to(room).emit('chat:start', { conversationId: id });
             },
             onToken: (token) => io.to(room).emit('chat:token', { conversationId: convId, token }),
+            onTool: (step) => io.to(room).emit('chat:tool', { conversationId: convId, step }),
           },
         });
         io.to(room).emit('chat:done', { conversationId: convId, message: result.message, stopped: result.stopped });

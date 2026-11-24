@@ -42,7 +42,7 @@ export async function removeAll(req, res) {
 /** Non-streaming chat endpoint (handy for Postman and clients without WebSockets). */
 export async function postMessage(req, res) {
   try {
-    const result = await sendMessage({ user: req.user, conversationId: req.params.id, content: req.body.content });
+    const result = await sendMessage({ user: req.user, conversationId: req.params.id, content: req.body.content, attachments: req.body.attachments });
     res.status(201).json(result);
   } catch (err) {
     if (err.message_) return res.status(502).json({ error: err.message, message: err.message_ });

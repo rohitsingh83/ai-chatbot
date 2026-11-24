@@ -28,7 +28,8 @@ const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export async function createMongoStore(uri) {
   mongoose.set('strictQuery', true);
-  await mongoose.connect(uri, { serverSelectionTimeoutMS: 10000 });
+  // MONGODB_DB keeps Nova's collections apart when the cluster is shared with other apps.
+  await mongoose.connect(uri, { serverSelectionTimeoutMS: 10000, ...(process.env.MONGODB_DB ? { dbName: process.env.MONGODB_DB } : {}) });
   await Promise.all([User.syncIndexes(), Conversation.syncIndexes(), Message.syncIndexes()]);
 
   const users = {

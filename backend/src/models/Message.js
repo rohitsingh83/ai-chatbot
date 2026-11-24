@@ -14,6 +14,16 @@ const messageSchema = new mongoose.Schema(
     latencyMs: { type: Number, default: 0 },
     cached: { type: Boolean, default: false },
     error: { type: Boolean, default: false },
+    // Files the user attached (their extracted text is what the AI reads).
+    attachments: {
+      type: [{ _id: false, name: String, type: { type: String }, size: Number, text: String }],
+      default: undefined,
+    },
+    // Tools the assistant used for this reply, e.g. a web search.
+    tools: {
+      type: [{ _id: false, name: String, label: String, status: String, error: String }],
+      default: undefined,
+    },
   },
   { timestamps: true }
 );

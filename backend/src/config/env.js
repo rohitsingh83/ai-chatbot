@@ -36,7 +36,9 @@ export const env = {
     maxTokens: Number(process.env.AI_MAX_TOKENS) || 1024,
     // Reasoning models on the gateway think before answering, so they need a bigger budget.
     gatewayMaxTokens: Number(process.env.AI_GATEWAY_MAX_TOKENS) || 4096,
-    timeoutMs: Number(process.env.AI_TIMEOUT_MS) || 60000,
+    timeoutMs: Number(process.env.AI_TIMEOUT_MS) || 90000,
+    // Free tools (web search, web pages, weather, calculator, time, Wikipedia) for models that support them.
+    tools: process.env.AI_TOOLS !== 'false',
     historyLimit: Number(process.env.AI_HISTORY_LIMIT) || 20,
   },
   rateLimit: {

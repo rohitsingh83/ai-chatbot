@@ -34,6 +34,21 @@ export interface Conversation {
   createdAt: string;
 }
 
+export interface Attachment {
+  name: string;
+  type: string;
+  size: number;
+  text: string;
+}
+
+export interface ToolStep {
+  id?: string;
+  name: string;
+  label: string;
+  status: "running" | "done" | "error";
+  error?: string;
+}
+
 export interface Message {
   id: string;
   conversation: string;
@@ -46,6 +61,10 @@ export interface Message {
   latencyMs?: number;
   cached?: boolean;
   error?: boolean;
+  /** Files the user attached; their text is what the AI reads. */
+  attachments?: Attachment[];
+  /** Tools the assistant used for this reply (web search, weather…). */
+  tools?: ToolStep[];
   createdAt: string;
   /** Set on optimistic messages until the server confirms them. */
   clientId?: string;

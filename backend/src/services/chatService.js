@@ -15,9 +15,9 @@ export async function getOwnedConversation(userId, conversationId) {
  * Core chat flow, shared by Socket.io and the REST endpoint:
  * save the user's message, stream the AI reply, save the reply.
  *
- * Hooks: onUserMessage(msg), onStart({ messageId }), onToken(token), onTitle(title)
+ * Hooks: onUserMessage(msg), onStart({ conversationId }), onToken(token), onTool(step), onTitle(conv)
  */
-export async function sendMessage({ user, conversationId, content, regenerate = false, signal, hooks = {} }) {
+export async function sendMessage({ user, conversationId, content = '', attachments = [], regenerate = false, signal, hooks = {} }) {
   const store = getStore();
   let conv;
   if (conversationId) {
@@ -38,11 +38,17 @@ export async function sendMessage({ user, conversationId, content, regenerate = 
     }
     if (!history.length || history[history.length - 1].role !== 'user') throw badRequest('Nothing to regenerate');
   } else {
-    const userMsg = await store.messages.create({ conversation: conv.id, user: user.id, role: 'user', content });
+    const userMsg = await store.messages.create({
+      conversation: conv.id,
+      user: user.id,
+      role: 'user',
+      content,
+      ...(attachments.length ? { attachments } : {}),
+    });
     hooks.onUserMessage?.(userMsg);
     history.push(userMsg);
     if (history.filter((m) => m.role === 'user').length === 1 && (conv.title === 'New chat' || !conv.title)) {
-      const title = makeTitle(content);
+      const title = makeTitle(content || attachments.map((a) => a.name).join(', '));
       conv = await store.conversations.update(conv.id, { title });
       hooks.onTitle?.(conv);
     }
@@ -59,6 +65,7 @@ export async function sendMessage({ user, conversationId, content, regenerate = 
       userName: user.name?.split(' ')[0],
       signal,
       onToken: (t) => hooks.onToken?.(t),
+      onTool: (step) => hooks.onTool?.(step),
     });
     const reply = await store.messages.create({
       conversation: conv.id,
@@ -69,6 +76,9 @@ export async function sendMessage({ user, conversationId, content, regenerate = 
       model: result.model,
       latencyMs: result.latencyMs,
       cached: result.cached,
+      ...(result.tools?.length
+        ? { tools: result.tools.map(({ name, label, status, error }) => ({ name, label, status: status === 'running' ? 'done' : status, ...(error ? { error } : {}) })) }
+        : {}),
     });
     return { conversation: await store.conversations.findById(conv.id), message: reply, stopped: !!result.stopped };
   } catch (err) {

@@ -58,9 +58,22 @@ export const updateConversationSchema = z
   .partial()
   .strict();
 
-export const sendMessageSchema = z.object({
-  content: z.string().trim().min(1, 'Message cannot be empty').max(8000, 'Message is too long (8,000 characters max)'),
+export const MAX_ATTACHMENTS = 5;
+export const MAX_ATTACHMENT_CHARS = 30000;
+
+export const attachmentSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  type: z.string().trim().max(120).default('text/plain'),
+  size: z.number().int().nonnegative().max(20 * 1024 * 1024).default(0),
+  text: z.string().max(MAX_ATTACHMENT_CHARS + 200, 'Attached file is too long'),
 });
+
+export const sendMessageSchema = z
+  .object({
+    content: z.string().trim().max(8000, 'Message is too long (8,000 characters max)').default(''),
+    attachments: z.array(attachmentSchema).max(MAX_ATTACHMENTS, `You can attach up to ${MAX_ATTACHMENTS} files`).default([]),
+  })
+  .refine((v) => v.content.length > 0 || v.attachments.length > 0, { message: 'Message cannot be empty', path: ['content'] });
 
 export const rateSchema = z.object({
   rating: z.union([z.literal(-1), z.literal(0), z.literal(1)]),

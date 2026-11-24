@@ -1,5 +1,5 @@
 import { API_URL } from "@/utils/constants";
-import type { AdminStats, Category, Conversation, Message, Preferences, User } from "@/utils/types";
+import type { AdminStats, Attachment, Category, Conversation, Message, Preferences, User } from "@/utils/types";
 
 const TOKEN_KEY = "nova.token";
 
@@ -88,8 +88,25 @@ export const api = {
   deleteConversation: (id: string) => request<void>(`/conversations/${id}`, { method: "DELETE" }),
   deleteAllConversations: () => request<void>("/conversations", { method: "DELETE" }),
   exportConversation: (id: string) => request<string>(`/conversations/${id}/export`, { raw: true }),
-  sendMessageRest: (id: string, content: string) =>
-    request<{ conversation: Conversation; message: Message }>(`/conversations/${id}/messages`, { method: "POST", body: { content } }),
+  sendMessageRest: (id: string, content: string, attachments: Attachment[] = []) =>
+    request<{ conversation: Conversation; message: Message }>(`/conversations/${id}/messages`, { method: "POST", body: { content, attachments } }),
+  /** Upload a file's bytes; the server returns its readable text (PDFs included). */
+  extractFile: async (file: File) => {
+    const token = tokenStore.get();
+    let res: Response;
+    try {
+      res = await fetch(`${API_URL}/api/files/extract?name=${encodeURIComponent(file.name)}`, {
+        method: "POST",
+        headers: { "Content-Type": file.type || "application/octet-stream", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: file,
+      });
+    } catch {
+      throw new ApiError(0, "Can't reach the server to read that file.");
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new ApiError(res.status, data.error || (res.status === 413 ? "That file is too large (4 MB max)." : `Could not read ${file.name}`));
+    return data as Attachment & { truncated: boolean; pages?: number };
+  },
   translate: (conversationId: string, messageId: string, language: string) =>
     request<{ language: string; translation: string; cached: boolean }>(`/conversations/${conversationId}/messages/${messageId}/translate`, {
       method: "POST",

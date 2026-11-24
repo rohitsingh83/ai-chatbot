@@ -42,6 +42,7 @@ export function gatewayProvider({ model, fallbackModels = [], maxTokens }) {
 
   return {
     name: 'gateway',
+    supportsTools: true,
     get model() {
       return active;
     },
@@ -51,13 +52,14 @@ export function gatewayProvider({ model, fallbackModels = [], maxTokens }) {
         return;
       }
       let lastRateLimit = null;
+      let current = args;
       for (const m of models) {
         if ((blockedUntil.get(m) || 0) > Date.now()) continue;
         // Up to two attempts per model: a reasoning model can return an empty reply.
         for (let attempt = 0; attempt < 2; attempt++) {
           let started = false;
           try {
-            for await (const chunk of clients.get(m).stream(args)) {
+            for await (const chunk of clients.get(m).stream(current)) {
               started = true;
               active = m;
               yield chunk;
@@ -69,7 +71,8 @@ export function gatewayProvider({ model, fallbackModels = [], maxTokens }) {
               logger.warn(`AI Gateway model ${m}: ${err.message}`);
               continue;
             }
-            if (!started && err.status === 429) {
+            if (err.status === 429 && (!started || err.convo)) {
+              if (err.convo) current = { ...current, messages: err.convo };
               // Free-tier models have small per-minute limits: try the next model.
               logger.warn(`AI Gateway model ${m} rate limited: ${err.message}`);
               lastRateLimit = err;

@@ -6,6 +6,17 @@ import { anthropicProvider } from './providers/anthropic.js';
 import { openaiProvider } from './providers/openai.js';
 import { demoProvider } from './providers/demo.js';
 import { gatewayProvider } from './providers/gateway.js';
+import { OPENAI_TOOLS, runTool, describeTool } from './tools/index.js';
+
+const toolkit = { definitions: OPENAI_TOOLS, run: runTool, describe: describeTool };
+
+const TOOL_GUIDE = [
+  'You can use tools. Use them whenever they help instead of guessing:',
+  '- web_search for anything recent, changing or that you are not sure about (news, prices, scores, releases, people, events), then read_webpage to read the best results in full when snippets are not enough.',
+  '- read_webpage whenever the user shares a link.',
+  '- get_weather for weather, calculate for any non-trivial arithmetic, get_current_time for dates and times, wikipedia for background on a topic.',
+  'When you use web information, cite the sources as Markdown links. Do not mention tool names to the user.',
+].join('\n');
 
 const CATEGORY_STYLE = {
   casual: 'Be warm, friendly and conversational. Light use of emoji is fine.',
@@ -21,9 +32,11 @@ const LENGTH_STYLE = {
   detailed: 'Give thorough, in-depth answers with examples where useful.',
 };
 
-export function buildSystemPrompt({ botName = 'Nova', category = 'casual', responseLength = 'balanced', language = 'auto', userName, customInstructions = '' } = {}) {
+export function buildSystemPrompt({ botName = 'Nova', category = 'casual', responseLength = 'balanced', language = 'auto', userName, customInstructions = '', tools = false } = {}) {
   return [
     `You are ${botName}, a helpful AI assistant inside a chat app.`,
+    `Today is ${new Date().toUTCString().slice(0, 16)} (UTC).`,
+    tools ? TOOL_GUIDE : '',
     userName ? `You are talking with ${userName}.` : '',
     CATEGORY_STYLE[category] || CATEGORY_STYLE.casual,
     LENGTH_STYLE[responseLength] || LENGTH_STYLE.balanced,
@@ -72,6 +85,16 @@ export function setProvider(p) {
 const cache = new LRUCache({ max: 500, ttl: 1000 * 60 * 60 });
 export const cacheStats = { hits: 0, misses: 0 };
 
+/** Put the text of attached files in front of the message, so the model can read them. */
+export function withAttachments(m) {
+  const files = m.attachments || [];
+  if (!files.length) return m.content || '';
+  const blocks = files.map(
+    (f) => `<attached_file name="${String(f.name).replace(/"/g, "'")}" type="${f.type || 'text/plain'}">\n${f.text || '(no readable text)'}\n</attached_file>`,
+  );
+  return `${blocks.join('\n\n')}\n\n${m.content || 'Please look at the attached file(s).'}`;
+}
+
 function cacheKey(p, system, messages) {
   if (messages.length !== 1) return null;
   const text = messages[0].content.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -83,13 +106,14 @@ function cacheKey(p, system, messages) {
  * Stream a reply. Calls onToken for each chunk and resolves with the full text
  * and metadata. Honors an AbortSignal (user pressed "Stop") and a hard timeout.
  */
-export async function generateReply({ history, prefs = {}, category, userName, signal, onToken = () => {} }) {
+export async function generateReply({ history, prefs = {}, category, userName, signal, onToken = () => {}, onTool = () => {} }) {
   const p = getProvider();
-  const system = buildSystemPrompt({ ...prefs, category, userName });
+  const useTools = env.ai.tools && p.supportsTools;
+  const system = buildSystemPrompt({ ...prefs, category, userName, tools: useTools });
   const messages = history
-    .filter((m) => !m.error && m.content)
+    .filter((m) => !m.error && (m.content || m.attachments?.length))
     .slice(-env.ai.historyLimit)
-    .map((m) => ({ role: m.role, content: m.content }));
+    .map((m) => ({ role: m.role, content: withAttachments(m) }));
   // Providers require the conversation to start with a user turn.
   while (messages.length && messages[0].role !== 'user') messages.shift();
 
@@ -114,6 +138,7 @@ export async function generateReply({ history, prefs = {}, category, userName, s
 
   let text = '';
   let attempt = 0;
+  const tools = [];
   try {
     while (true) {
       try {
@@ -121,17 +146,31 @@ export async function generateReply({ history, prefs = {}, category, userName, s
           system,
           messages,
           signal: combined,
+          toolkit: useTools ? toolkit : undefined,
           meta: { botName: prefs.botName, category },
         })) {
-          text += token;
-          onToken(token);
+          if (typeof token === 'string') {
+            text += token;
+            onToken(token);
+          } else if (token?.type === 'tool') {
+            const step = { id: token.id, name: token.name, label: token.label, args: token.args, status: 'running' };
+            tools.push(step);
+            onTool({ ...step });
+          } else if (token?.type === 'tool_result') {
+            const step = tools.find((t) => t.id === token.id);
+            if (step) {
+              step.status = token.ok ? 'done' : 'error';
+              if (token.error) step.error = String(token.error).slice(0, 200);
+              onTool({ ...step });
+            }
+          }
         }
         break;
       } catch (err) {
         if (signal?.aborted) break; // user stopped: keep the partial answer
         if (timeout.signal.aborted) throw Object.assign(new Error('The AI took too long to respond. Please try again.'), { code: 'TIMEOUT' });
         // Retry once on transient errors, but only if nothing was streamed yet.
-        if (err.retryable && attempt === 0 && !text) {
+        if (err.retryable && attempt === 0 && !text && !tools.length) {
           attempt++;
           await new Promise((r) => setTimeout(r, 800));
           continue;
@@ -143,8 +182,9 @@ export async function generateReply({ history, prefs = {}, category, userName, s
     clearTimeout(timer);
   }
 
-  if (key && text && !signal?.aborted) cache.set(key, text);
-  return { text, provider: p.name, model: p.model, latencyMs: Date.now() - started, cached: false, stopped: !!signal?.aborted };
+  // Answers that used tools depend on live data, so they are never cached.
+  if (key && text && !tools.length && !signal?.aborted) cache.set(key, text);
+  return { text, provider: p.name, model: p.model, latencyMs: Date.now() - started, cached: false, stopped: !!signal?.aborted, tools };
 }
 
 const translations = new LRUCache({ max: 300, ttl: 1000 * 60 * 60 * 6 });
