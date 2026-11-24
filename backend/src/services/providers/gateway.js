@@ -52,22 +52,29 @@ export function gatewayProvider({ model, fallbackModels = [], maxTokens }) {
       }
       for (const m of models) {
         if ((blockedUntil.get(m) || 0) > Date.now()) continue;
-        let started = false;
-        try {
-          for await (const chunk of clients.get(m).stream(args)) {
-            started = true;
+        // Up to two attempts per model: a reasoning model can return an empty reply.
+        for (let attempt = 0; attempt < 2; attempt++) {
+          let started = false;
+          try {
+            for await (const chunk of clients.get(m).stream(args)) {
+              started = true;
+              active = m;
+              yield chunk;
+            }
             active = m;
-            yield chunk;
+            return;
+          } catch (err) {
+            if (!started && err.empty) {
+              logger.warn(`AI Gateway model ${m}: ${err.message}`);
+              continue;
+            }
+            if (!started && [401, 402, 403].includes(err.status)) {
+              logger.warn(`AI Gateway model ${m} unavailable: ${err.message}`);
+              blockedUntil.set(m, Date.now() + 10 * 60 * 1000);
+              break;
+            }
+            throw err;
           }
-          active = m;
-          return;
-        } catch (err) {
-          if (!started && [401, 402, 403].includes(err.status)) {
-            logger.warn(`AI Gateway model ${m} unavailable: ${err.message}`);
-            blockedUntil.set(m, Date.now() + 10 * 60 * 1000);
-            continue;
-          }
-          throw err;
         }
       }
       // Nothing usable on the gateway: keep the app working with the demo model.
