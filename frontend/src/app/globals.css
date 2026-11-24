@@ -1,0 +1,229 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------- Design tokens ---------- */
+:root {
+  --bg: #f7f7fb;
+  --bg-elev: #ffffff;
+  --panel: rgba(255, 255, 255, 0.72);
+  --panel-solid: #ffffff;
+  --border: rgba(15, 15, 40, 0.09);
+  --border-strong: rgba(15, 15, 40, 0.16);
+  --text: #0e0e1a;
+  --muted: #5d6075;
+  --subtle: #8b8ea3;
+  --hover: rgba(15, 15, 40, 0.045);
+  --code-bg: #0f1020;
+
+  /* accent (overridden by data-accent) */
+  --accent: 124 92 255;
+  --accent-2: 56 189 248;
+  --accent-fg: 255 255 255;
+}
+
+.dark {
+  --bg: #08080f;
+  --bg-elev: #0f0f1a;
+  --panel: rgba(20, 20, 34, 0.6);
+  --panel-solid: #12121f;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --text: #ecebf5;
+  --muted: #a1a3b8;
+  --subtle: #6f7189;
+  --hover: rgba(255, 255, 255, 0.05);
+  --code-bg: #0b0b16;
+}
+
+[data-accent="violet"] { --accent: 124 92 255; --accent-2: 56 189 248; }
+[data-accent="blue"] { --accent: 59 130 246; --accent-2: 34 211 238; }
+[data-accent="emerald"] { --accent: 16 185 129; --accent-2: 132 204 22; }
+[data-accent="rose"] { --accent: 244 63 94; --accent-2: 251 146 60; }
+[data-accent="amber"] { --accent: 245 158 11; --accent-2: 239 68 68; }
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-elev: var(--bg-elev);
+  --color-panel: var(--panel);
+  --color-panel-solid: var(--panel-solid);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-fg: var(--text);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-hover: var(--hover);
+  --color-accent: rgb(var(--accent));
+  --color-accent-2: rgb(var(--accent-2));
+  --color-on-accent: rgb(var(--accent-fg));
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-display-serif), Georgia, serif;
+  --animate-float: float 8s ease-in-out infinite;
+  --animate-shimmer: shimmer 2.2s linear infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-14px) scale(1.03); }
+}
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes orb-spin { to { transform: rotate(360deg); } }
+@keyframes dot {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* ---------- Base ---------- */
+html { color-scheme: light; }
+html.dark { color-scheme: dark; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: rgb(var(--accent) / 0.28); }
+
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+
+/* In a layer so utilities like outline-none can override it. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 2px;
+  }
+}
+
+/* ---------- Utilities ---------- */
+@utility glass {
+  background: var(--panel);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  border: 1px solid var(--border);
+}
+
+@utility text-gradient {
+  background: linear-gradient(110deg, rgb(var(--accent)), rgb(var(--accent-2)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility bg-accent-gradient {
+  background: linear-gradient(135deg, rgb(var(--accent)), rgb(var(--accent-2)));
+}
+
+@utility grid-bg {
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse at 50% 30%, black 20%, transparent 70%);
+}
+
+@utility shimmer-text {
+  background: linear-gradient(90deg, var(--subtle) 0%, var(--text) 50%, var(--subtle) 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 2.2s linear infinite;
+}
+
+.typing-dot { animation: dot 1.4s infinite ease-in-out both; }
+.typing-dot:nth-child(2) { animation-delay: 0.16s; }
+.typing-dot:nth-child(3) { animation-delay: 0.32s; }
+
+.caret::after {
+  content: "▍";
+  margin-left: 2px;
+  color: rgb(var(--accent));
+  animation: blink 1s step-end infinite;
+}
+
+/* The bot "orb" avatar */
+.orb {
+  position: relative;
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle at 30% 30%, rgb(255 255 255 / 0.9), transparent 35%),
+    conic-gradient(from 180deg, rgb(var(--accent)), rgb(var(--accent-2)), rgb(var(--accent)));
+  box-shadow: 0 0 24px rgb(var(--accent) / 0.45), inset 0 0 12px rgb(255 255 255 / 0.25);
+}
+.orb.is-live::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  background: conic-gradient(from 0deg, transparent, rgb(var(--accent-2)), transparent 40%);
+  animation: orb-spin 1.2s linear infinite;
+  z-index: -1;
+}
+
+/* ---------- Markdown (chat messages) ---------- */
+.prose-chat { line-height: 1.7; font-size: 0.95rem; overflow-wrap: anywhere; }
+.prose-chat > * + * { margin-top: 0.75em; }
+.prose-chat h1, .prose-chat h2, .prose-chat h3 { font-weight: 650; line-height: 1.3; margin-top: 1.2em; }
+.prose-chat h1 { font-size: 1.35rem; }
+.prose-chat h2 { font-size: 1.18rem; }
+.prose-chat h3 { font-size: 1.04rem; }
+.prose-chat ul { list-style: disc; padding-left: 1.4em; }
+.prose-chat ol { list-style: decimal; padding-left: 1.4em; }
+.prose-chat li + li { margin-top: 0.3em; }
+.prose-chat li::marker { color: rgb(var(--accent)); }
+.prose-chat a { color: rgb(var(--accent)); text-decoration: underline; text-underline-offset: 3px; }
+.prose-chat strong { font-weight: 650; }
+.prose-chat blockquote {
+  border-left: 3px solid rgb(var(--accent));
+  padding: 0.4em 0 0.4em 1em;
+  color: var(--muted);
+  background: rgb(var(--accent) / 0.06);
+  border-radius: 0 10px 10px 0;
+}
+.prose-chat hr { border-color: var(--border); }
+.prose-chat :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  padding: 0.15em 0.4em;
+  border-radius: 6px;
+  background: rgb(var(--accent) / 0.12);
+  color: rgb(var(--accent));
+}
+.prose-chat table { width: 100%; border-collapse: collapse; font-size: 0.9em; display: block; overflow-x: auto; }
+.prose-chat th, .prose-chat td { border: 1px solid var(--border); padding: 0.5em 0.8em; text-align: left; }
+.prose-chat th { background: var(--hover); font-weight: 600; }
+
+/* highlight.js theme tuned for the code panel */
+.hljs { color: #e6e6f0; background: transparent; }
+.hljs-comment, .hljs-quote { color: #6b7095; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-built_in { color: #c792ea; }
+.hljs-string, .hljs-attr, .hljs-template-tag { color: #a5e075; }
+.hljs-number, .hljs-literal { color: #f78c6c; }
+.hljs-title, .hljs-function .hljs-title, .hljs-title.function_ { color: #82aaff; }
+.hljs-type, .hljs-class .hljs-title, .hljs-title.class_ { color: #ffcb6b; }
+.hljs-variable, .hljs-params { color: #e6e6f0; }
+.hljs-meta, .hljs-tag, .hljs-name { color: #89ddff; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* blinking caret after the last streamed block */
+.caret-last .prose-chat > :last-child::after {
+  content: "▍";
+  margin-left: 2px;
+  color: rgb(var(--accent));
+  animation: blink 1s step-end infinite;
+}

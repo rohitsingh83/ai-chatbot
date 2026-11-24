@@ -1,0 +1,20 @@
+import { Router } from 'express';
+import * as c from '../controllers/conversationController.js';
+import { requireAuth } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
+import { messageLimiter } from '../middleware/rateLimit.js';
+import { asyncHandler } from '../utils/errors.js';
+import { createConversationSchema, updateConversationSchema, sendMessageSchema, rateSchema } from '../utils/schemas.js';
+
+const r = Router();
+r.use(requireAuth);
+r.get('/', asyncHandler(c.list));
+r.post('/', validate(createConversationSchema), asyncHandler(c.create));
+r.delete('/', asyncHandler(c.removeAll));
+r.get('/:id', asyncHandler(c.get));
+r.patch('/:id', validate(updateConversationSchema), asyncHandler(c.update));
+r.delete('/:id', asyncHandler(c.remove));
+r.get('/:id/export', asyncHandler(c.exportMarkdown));
+r.post('/:id/messages', messageLimiter, validate(sendMessageSchema), asyncHandler(c.postMessage));
+r.patch('/:id/messages/:messageId/rating', validate(rateSchema), asyncHandler(c.rateMessage));
+export default r;
