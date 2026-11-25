@@ -65,9 +65,17 @@ Tokens carry a `tv` (token version) claim. Changing the password or calling `/au
 | PATCH | `/conversations/:id` | `{ title?, category?, pinned? }` | `{ conversation }` |
 | DELETE | `/conversations/:id` | | `204` |
 | GET | `/conversations/:id/export` | | Markdown file |
-| POST | `/conversations/:id/messages` | `{ content }` | `201 { conversation, message }` (non-streaming; good for Postman) |
+| POST | `/conversations/:id/messages` | `{ content, attachments? }` | `201 { conversation, message }` (non-streaming; good for Postman) |
 | PATCH | `/conversations/:id/messages/:messageId/rating` | `{ rating: -1 \| 0 \| 1, feedback? }` | `{ message }` |
 | POST | `/conversations/:id/messages/:messageId/translate` | `{ language }` | `{ language, translation, cached }` (cached; `502` if the AI provider fails) |
+
+`attachments` is an array of up to 5 `{ name, type, size, text }` objects (text up to 30,000 characters each). `content` may be empty when files are attached.
+
+## Files
+
+| Method | Path | Body | Returns |
+| --- | --- | --- | --- |
+| POST | `/files/extract?name=report.pdf` | The raw file bytes, with the file's `Content-Type` (4 MB max) | `{ name, type, size, text, truncated, pages? }`. Reads PDFs and text files (code, CSV, JSON, Markdown…); `400` for other types |
 
 ## Admin (role `admin` only)
 
@@ -94,7 +102,7 @@ Every socket joins a private room for its user, so all of a user's open tabs rec
 
 | Event | Payload | Ack |
 | --- | --- | --- |
-| `chat:send` | `{ conversationId?, content, clientId? }` | `{ ok: true, conversationId }` or `{ ok: false, error }` |
+| `chat:send` | `{ conversationId?, content, attachments?, clientId? }` | `{ ok: true, conversationId }` or `{ ok: false, error }` |
 | `chat:regenerate` | `{ conversationId }` | same as above |
 | `chat:stop` | `{ conversationId }` | none (keeps the partial answer) |
 
@@ -108,6 +116,7 @@ If `conversationId` is omitted, a new conversation is created.
 | `chat:user-message` | `{ message, clientId }` (the stored user message) |
 | `chat:start` | `{ conversationId }` (AI started) |
 | `chat:token` | `{ conversationId, token }` (one streamed chunk) |
+| `chat:tool` | `{ conversationId, step: { id, name, label, status: "running" \| "done" \| "error", error? } }` (a tool step started or finished, e.g. a web search) |
 | `chat:done` | `{ conversationId, message, stopped }` (the stored assistant reply) |
 | `chat:error` | `{ conversationId, error, message? }` |
 
@@ -118,7 +127,8 @@ User          { name, email (unique), passwordHash, role, preferences{…}, toke
 Conversation  { user → User, title, category, pinned, messageCount, lastMessageAt }
               index: { user, pinned, lastMessageAt }
 Message       { conversation → Conversation, user → User, role, content,
-                rating, feedback, provider, model, latencyMs, cached, error }
+                rating, feedback, provider, model, latencyMs, cached, error,
+                attachments[{ name, type, size, text }], tools[{ name, label, status, error }] }
               index: { conversation, createdAt }, { createdAt }, { role, rating }
 ```
 
@@ -126,8 +136,9 @@ Message       { conversation → Conversation, user → User, role, content,
 
 - REST: 300 requests/min per IP. Auth: 30 attempts per 15 min per IP.
 - Chat messages: `RATE_LIMIT_MESSAGES_PER_MIN` (default 20) per user, over both HTTP and WebSockets.
-- Messages up to 8,000 characters; JSON bodies up to 100 KB.
-- AI calls time out after `AI_TIMEOUT_MS` (default 60 s) and retry once on 429/5xx before any text has streamed.
+- Messages up to 8,000 characters; JSON bodies up to 1 MB (room for attached files' text); file uploads up to 4 MB.
+- A reply can use up to 5 rounds of tool calls. Answers that used tools are never cached.
+- AI calls time out after `AI_TIMEOUT_MS` (default 90 s) and retry once on 429/5xx before any text has streamed.
 - Identical first questions in the same mode are served from an in-memory LRU cache for an hour.
 
 ## Postman

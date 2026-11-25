@@ -108,6 +108,17 @@ function safeMath(expr) {
 }
 
 function compose({ text, botName, category, history }) {
+  // Attached files arrive as <attached_file> blocks: give a real (if simple) look at them.
+  const files = [...text.matchAll(/<attached_file name="([^"]*)"[^>]*>\n([\s\S]*?)\n<\/attached_file>/g)];
+  if (files.length) {
+    const parts = files.map(([, fname, body]) => {
+      const lines = body.split('\n').filter((l) => l.trim());
+      const words = body.split(/\s+/).filter(Boolean).length;
+      const preview = lines.slice(0, 3).map((l) => `> ${l.slice(0, 160)}`).join('\n');
+      return `**${fname}** has ${lines.length.toLocaleString()} lines and about ${words.toLocaleString()} words. It starts with:\n\n${preview}`;
+    });
+    return `I read ${files.length === 1 ? 'your file' : `your ${files.length} files`}.\n\n${parts.join('\n\n')}\n\n_I'm running as the offline demo model, so this is a simple overview. With a real AI model connected I can summarise, answer questions about, or rewrite the contents._`;
+  }
   const t = text.toLowerCase().trim();
   const seed = hash(t);
   const name = botName || 'Nova';

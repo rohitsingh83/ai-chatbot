@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   BarChart3,
+  Globe,
   Brain,
   Gauge,
   History,
@@ -28,6 +29,12 @@ const FEATURES = [
     visual: "stream",
   },
   { icon: Brain, title: "Bring any model", body: "Claude, GPT or any OpenAI-compatible API. An offline demo model means it runs with zero keys." },
+  {
+    icon: Globe,
+    title: "Gets things done",
+    body: "Nova searches the web, reads web pages and attached files (PDF, CSV, code), checks the weather and does exact maths, showing each step live as it works.",
+    span: "md:col-span-2",
+  },
   { icon: History, title: "Searchable history", body: "Every conversation is saved to MongoDB. Search titles and message text, pin, rename or export to Markdown." },
   { icon: Lock, title: "Secure accounts", body: "JWT sessions, bcrypt-hashed passwords, input validation, CORS, Helmet and rate limiting on every route." },
   {
@@ -38,7 +45,6 @@ const FEATURES = [
   },
   { icon: MessagesSquare, title: "Four chat modes", body: "Casual, Professional, Creative and Coding modes each shape the assistant's tone and format." },
   { icon: ThumbsUp, title: "Rate every answer", body: "Thumbs up or down with written feedback, feeding the satisfaction score on the admin dashboard." },
-  { icon: Mic, title: "Voice in, voice out", body: "Dictate messages with your microphone and have replies read aloud, right in the browser." },
   {
     icon: BarChart3,
     title: "Admin analytics",
@@ -46,7 +52,13 @@ const FEATURES = [
     span: "md:col-span-2",
     visual: "chart",
   },
-  { icon: Gauge, title: "Fast and resilient", body: "Repeat questions are cached, failed AI calls retry, requests time out cleanly, and chat falls back to HTTP if WebSockets drop." },
+  { icon: Mic, title: "Voice in, voice out", body: "Dictate messages with your microphone and have replies read aloud, right in the browser." },
+  {
+    icon: Gauge,
+    title: "Fast and resilient",
+    body: "Repeat questions are cached, failed AI calls retry or move to a backup model, requests time out cleanly, and chat falls back to HTTP if WebSockets drop.",
+    span: "md:col-span-2",
+  },
 ];
 
 const STEPS = [

@@ -6,12 +6,13 @@ import { AlertTriangle, CalendarPlus, Check, Copy, Languages, Loader2, RotateCcw
 import { api } from "@/services/api";
 import { toast } from "sonner";
 import { Markdown } from "./Markdown";
+import { AttachmentChip, ToolSteps } from "./ToolSteps";
 import { Orb } from "@/components/ui/Logo";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { clockTime, initials } from "@/utils/format";
 import { cn } from "@/utils/cn";
-import type { Message } from "@/utils/types";
+import type { Message, ToolStep } from "@/utils/types";
 
 const TRANSLATE_TO = ["English", "Hindi", "Spanish", "French", "German", "Japanese", "Chinese", "Arabic", "Portuguese", "Bengali", "Tamil"];
 
@@ -117,9 +118,18 @@ export const MessageBubble = memo(function MessageBubble({ message: m, botName, 
     return (
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="group flex justify-end gap-3">
         <div className="flex max-w-[85%] flex-col items-end sm:max-w-[75%]">
-          <div className={cn("whitespace-pre-wrap rounded-3xl rounded-br-lg bg-accent-gradient px-4 py-2.5 text-[0.95rem] leading-relaxed text-white shadow-[0_8px_24px_-12px_rgb(var(--accent)/0.7)]", m.pending && "opacity-70")}>
-            {m.content}
-          </div>
+          {!!m.attachments?.length && (
+            <div className={cn("mb-1.5 flex flex-wrap justify-end gap-1.5", m.pending && "opacity-70")}>
+              {m.attachments.map((f, i) => (
+                <AttachmentChip key={`${f.name}-${i}`} file={f} />
+              ))}
+            </div>
+          )}
+          {m.content && (
+            <div className={cn("whitespace-pre-wrap rounded-3xl rounded-br-lg bg-accent-gradient px-4 py-2.5 text-[0.95rem] leading-relaxed text-white shadow-[0_8px_24px_-12px_rgb(var(--accent)/0.7)]", m.pending && "opacity-70")}>
+              {m.content}
+            </div>
+          )}
           <span className="mt-1 px-1 text-[11px] text-subtle opacity-0 transition group-hover:opacity-100">{m.pending ? "Sending…" : clockTime(m.createdAt)}</span>
         </div>
         <span className="mt-0.5 hidden h-8 w-8 shrink-0 place-items-center rounded-full border border-line bg-elev text-xs font-semibold text-muted sm:grid">{initials(userName)}</span>
@@ -171,6 +181,7 @@ export const MessageBubble = memo(function MessageBubble({ message: m, botName, 
             </span>
           )}
         </div>
+        <ToolSteps steps={m.tools} />
         {m.error ? (
           <div className="flex items-start gap-2.5 rounded-2xl border border-red-500/25 bg-red-500/[0.07] px-4 py-3 text-sm text-red-500">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -293,12 +304,14 @@ function ActionButton({ label, onClick, active, danger, children }: { label: str
   );
 }
 
-export function StreamingBubble({ text, phase, botName }: { text: string; phase: "thinking" | "streaming"; botName: string }) {
+export function StreamingBubble({ text, phase, botName, tools }: { text: string; phase: "thinking" | "streaming"; botName: string; tools?: ToolStep[] }) {
+  const running = tools?.some((t) => t.status === "running");
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3" aria-live="polite">
       <Orb size={30} live className="mt-0.5" />
       <div className="min-w-0 flex-1">
         <div className="mb-1 text-xs font-semibold">{botName}</div>
+        <ToolSteps steps={tools} live />
         {phase === "thinking" || !text ? (
           <div className="flex items-center gap-3 py-1.5">
             <span className="flex gap-1">
@@ -306,7 +319,7 @@ export function StreamingBubble({ text, phase, botName }: { text: string; phase:
               <span className="typing-dot h-2 w-2 rounded-full bg-accent" />
               <span className="typing-dot h-2 w-2 rounded-full bg-accent" />
             </span>
-            <span className="shimmer-text text-sm font-medium">{botName} is thinking…</span>
+            <span className="shimmer-text text-sm font-medium">{running ? "Working on it…" : tools?.length ? `${botName} is writing…` : `${botName} is thinking…`}</span>
           </div>
         ) : (
           <div className="caret-last">

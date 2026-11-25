@@ -20,15 +20,15 @@ export const ACCENTS: { id: Accent; label: string; from: string; to: string }[] 
 export const SUGGESTIONS: Record<Category, { title: string; prompt: string }[]> = {
   casual: [
     { title: "Plan my weekend", prompt: "Suggest a relaxing but fun weekend plan in the city" },
-    { title: "Tell me a joke", prompt: "Tell me a programming joke" },
-    { title: "Fun fact", prompt: "Explain why the sky is blue like I'm five" },
+    { title: "Check the weather", prompt: "What's the weather like in Mumbai today and for the next 3 days?" },
+    { title: "Latest news", prompt: "Search the web for today's top technology news and summarise it with sources" },
     { title: "Dinner idea", prompt: "What can I cook tonight with rice, eggs and spinach?" },
   ],
   professional: [
     { title: "Write an email", prompt: "Write a polite email asking my manager for a deadline extension" },
-    { title: "Summarise", prompt: "Summarise the benefits of WebSockets for a product manager" },
+    { title: "Research", prompt: "Search the web and compare the latest versions of Next.js and React, with sources" },
     { title: "Interview prep", prompt: "Give me 5 common internship interview questions with tips" },
-    { title: "Plan a project", prompt: "Create a 2-week plan to build a chatbot web app" },
+    { title: "Calculate", prompt: "If I invest ₹5,000 a month for 10 years at 12% a year, what will it grow to?" },
   ],
   creative: [
     { title: "Brainstorm names", prompt: "Give me 5 creative names for a coffee shop run by robots" },

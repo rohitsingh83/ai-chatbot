@@ -12,17 +12,23 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 export async function initStore() {
   if (store) return store;
   if (env.mongoUri) {
-    const { createMongoStore } = await import('./mongoStore.js');
-    store = await createMongoStore(env.mongoUri);
-    logger.info('Connected to MongoDB');
-  } else {
-    store = createMemoryStore({
-      file: env.isTest ? null : process.env.DATA_FILE ||
-        // Serverless hosts (Vercel) only allow writes under /tmp.
-        (process.env.VERCEL ? '/tmp/nova-db.json' : path.join(here, '../../data/dev-db.json')),
-    });
-    logger.warn('MONGODB_URI not set: using the local file store (fine for demos, not for production)');
+    try {
+      const { createMongoStore } = await import('./mongoStore.js');
+      store = await createMongoStore(env.mongoUri);
+      logger.info('Connected to MongoDB');
+      return store;
+    } catch (err) {
+      // Keep the app up (with temporary storage) rather than failing every request.
+      if (env.isTest) throw err;
+      logger.error(`Could not connect to MongoDB (${err.message}). Falling back to the local file store.`);
+    }
   }
+  store = createMemoryStore({
+    file: env.isTest ? null : process.env.DATA_FILE ||
+      // Serverless hosts (Vercel) only allow writes under /tmp.
+      (process.env.VERCEL ? '/tmp/nova-db.json' : path.join(here, '../../data/dev-db.json')),
+  });
+  if (!env.mongoUri) logger.warn('MONGODB_URI not set: using the local file store (fine for demos, not for production)');
   return store;
 }
 

@@ -14,7 +14,7 @@ import { MessageBubble, StreamingBubble } from "./MessageBubble";
 import { EmptyState } from "./EmptyState";
 import { ModePicker } from "./ModePicker";
 import { cn } from "@/utils/cn";
-import type { Category } from "@/utils/types";
+import type { Attachment, Category } from "@/utils/types";
 
 export function ChatView({ id }: { id?: string }) {
   const router = useRouter();
@@ -53,19 +53,19 @@ export function ChatView({ id }: { id?: string }) {
   }, []);
   useEffect(() => {
     if (stick) scrollToBottom(false);
-  }, [messages?.length, stream?.text, stick, scrollToBottom]);
+  }, [messages?.length, stream?.text, stream?.tools?.length, stick, scrollToBottom]);
 
   const onScroll = () => {
     const el = scroller.current!;
     setStick(el.scrollHeight - el.scrollTop - el.clientHeight < 80);
   };
 
-  const send = async (text: string) => {
+  const send = async (text: string, attachments: Attachment[] = []) => {
     setStick(true);
-    if (id) return chat.send(id, text);
+    if (id) return chat.send(id, text, attachments);
     const conv = await chat.createConversation(draftCategory);
     router.push(`/chat/${conv.id}`);
-    await chat.send(conv.id, text);
+    await chat.send(conv.id, text, attachments);
   };
 
   const changeMode = (c: Category) => {
@@ -149,7 +149,7 @@ export function ChatView({ id }: { id?: string }) {
                 onRegenerate={m.id === lastAssistant && !busy ? () => chat.regenerate(id!).catch((e) => toast.error(e.message)) : undefined}
               />
             ))}
-            {stream && <StreamingBubble text={stream.text} phase={stream.phase} botName={prefs.botName} />}
+            {stream && <StreamingBubble text={stream.text} phase={stream.phase} tools={stream.tools} botName={prefs.botName} />}
           </div>
         )}
       </div>
