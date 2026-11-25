@@ -29,6 +29,8 @@ export async function providerError(res, name) {
   }
   const err = new Error(`${name} API error ${res.status}${detail ? `: ${detail}` : ''}`);
   err.status = res.status;
+  const retryAfter = Number(res.headers.get('retry-after'));
+  if (Number.isFinite(retryAfter) && retryAfter > 0) err.retryAfterMs = Math.min(retryAfter * 1000, 60000);
   err.retryable = res.status === 429 || res.status >= 500;
   return err;
 }

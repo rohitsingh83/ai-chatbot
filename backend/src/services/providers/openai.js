@@ -1,6 +1,6 @@
 import { readSSE, providerError } from './sse.js';
 
-const MAX_TOOL_ROUNDS = 5;
+const MAX_TOOL_ROUNDS = 4;
 
 /**
  * OpenAI (or any OpenAI-compatible endpoint, e.g. Groq, OpenRouter, Ollama, Vercel AI Gateway)

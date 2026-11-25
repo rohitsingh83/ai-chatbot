@@ -8,7 +8,7 @@ import { getWeather } from './weather.js';
 export const TOOL_DEFINITIONS = [
   {
     name: 'web_search',
-    description: 'Search the web for current information, news, facts, prices, people, places or anything you are unsure about. Returns titles, links and snippets.',
+    description: 'Search for current information, facts, news, people, places or anything you are unsure about. Returns titles, links and snippets. Search once or twice at most; then read the best page with read_webpage.',
     parameters: {
       type: 'object',
       properties: {
@@ -20,7 +20,7 @@ export const TOOL_DEFINITIONS = [
   },
   {
     name: 'read_webpage',
-    description: 'Open a web page and read its text. Use it after web_search to read a result in full, or when the user shares a link.',
+    description: 'Open a web page and read its text. Use it to read a search result in full, when the user shares a link, or to go straight to an official site you know (docs, blogs, release pages, news sites).',
     parameters: {
       type: 'object',
       properties: { url: { type: 'string', description: 'Full http(s) URL' } },

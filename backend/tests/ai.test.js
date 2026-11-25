@@ -157,3 +157,26 @@ test('AI Gateway tries the next model when one is not on the plan', async () => 
     globalThis.fetch = realFetch;
   }
 });
+
+test('AI Gateway waits for a rate-limited free model instead of failing', async () => {
+  const { gatewayProvider, rememberOidcToken } = await import('../src/services/providers/gateway.js');
+  const realFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    if (calls === 1) return new Response('{"error":"rate limited"}', { status: 429, headers: { 'retry-after': '1' } });
+    return new Response('data: {"choices":[{"delta":{"content":"done"}}]}\n\ndata: [DONE]\n\n', { status: 200 });
+  };
+  try {
+    rememberOidcToken({ 'x-vercel-oidc-token': 'oidc-rl' });
+    const p = gatewayProvider({ model: 'free/only', maxTokens: 50 });
+    let out = '';
+    const t0 = Date.now();
+    for await (const t of p.stream({ system: 's', messages: [{ role: 'user', content: 'Hi' }] })) out += t;
+    assert.equal(out, 'done');
+    assert.equal(calls, 2);
+    assert.ok(Date.now() - t0 >= 900, 'waited for the retry-after window');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
