@@ -38,7 +38,7 @@ Next.js · Tailwind CSS · Node.js · Express · Socket.io · MongoDB · JWT · 
 | 💬 | **Chat interface** | Responsive Tailwind UI with Markdown, tables and syntax-highlighted code blocks (with copy buttons), auto-growing input, suggestion cards, scroll-to-latest, keyboard shortcuts. |
 | ⚡ | **Real-time streaming** | Socket.io streams each token as it is generated. A "thinking" state, a **Stop** button that keeps the partial answer, **Regenerate**, and live sync across every open tab. Falls back to plain HTTP if WebSockets are unavailable. |
 | 🧠 | **AI-powered responses** | Pluggable providers: **Vercel AI Gateway** (Claude, GPT, Gemini and more; on Vercel it needs no API key), **Anthropic Claude**, **OpenAI** (or any OpenAI-compatible API such as Groq, OpenRouter or Ollama), and an offline **demo model** so the whole app works with no API key. The live demo uses AI Gateway's free models (and switches to Claude Haiku 5.5 automatically once AI Gateway credits are added). |
-| 🛠️ | **Agent tools** | Nova can do things, not just talk: **web search** (with sources), **read any web page** or link you share, **weather** forecasts, exact **maths**, the current **date and time** in any time zone, and **Wikipedia** lookups. All free, no API keys. Each step shows live in the chat ("Searching the web for …") and is saved with the reply. |
+| 🛠️ | **Agent tools** | Nova can do things, not just talk: **search** (free public sources, or full web search with an optional Tavily/Brave key) with sources, **read any web page** or link you share, **weather** forecasts, exact **maths**, the current **date and time** in any time zone, and **Wikipedia** lookups. All free, no API keys. Each step shows live in the chat ("Searching the web for …") and is saved with the reply. |
 | 📎 | **File attachments** | Attach, drag-and-drop or paste up to 5 files per message: **PDFs**, text, Markdown, CSV, JSON and code. Nova reads them and answers questions about them; the files stay on the message in your history. |
 | 🗂️ | **Chat history** | Conversations and messages stored in MongoDB with indexes. Sidebar grouped by Today / Yesterday / Previous 7 days, full-text search across titles *and* message content, rename, pin, delete, export to Markdown. Titles are generated from the first message. |
 | 🎨 | **Personalisation** | Rename the assistant, light / dark / system theme, five accent colours, default chat mode, reply language, response length, and "send on Enter". Changes apply instantly. |
@@ -168,9 +168,10 @@ The first account created becomes an admin. To make more admins, list their emai
 | `AI_GATEWAY_API_KEY` / `AI_GATEWAY_MODEL` | / `anthropic/claude-haiku-5.5` | Vercel AI Gateway. No key needed when deployed on Vercel (uses the project's OIDC token) |
 | `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` | / `claude-sonnet-5-5` | Claude settings |
 | `OPENAI_API_KEY` / `OPENAI_MODEL` / `OPENAI_BASE_URL` | / `gpt-4o-mini` / OpenAI | OpenAI or compatible settings |
-| `AI_GATEWAY_FALLBACK_MODELS` | free Nemotron, Beam | Models tried when the main one is unavailable or rate limited |
+| `AI_GATEWAY_FALLBACK_MODELS` | free Nemotron | Models tried when the main one is unavailable or rate limited |
 | `AI_TOOLS` | `true` | Let the model use the free tools (web search, web pages, weather, calculator, time, Wikipedia) |
-| `AI_MAX_TOKENS`, `AI_TIMEOUT_MS`, `AI_HISTORY_LIMIT` | `1024`, `90000`, `20` | Generation limits |
+| `TAVILY_API_KEY` or `BRAVE_SEARCH_API_KEY` | *(empty)* | Optional. Turns web search into full web search (both have free tiers). Without a key, search uses free public APIs: DuckDuckGo Instant Answers, Wikipedia and Hacker News, and Nova opens official pages directly |
+| `AI_MAX_TOKENS`, `AI_TIMEOUT_MS`, `AI_HISTORY_LIMIT` | `1024`, `120000`, `20` | Generation limits |
 | `RATE_LIMIT_MESSAGES_PER_MIN` | `20` | Messages per user per minute |
 
 `frontend/.env.local`:

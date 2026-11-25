@@ -149,9 +149,20 @@ export async function generateReply({ history, prefs = {}, category, userName, s
           toolkit: useTools ? toolkit : undefined,
           meta: { botName: prefs.botName, category },
         })) {
+          for (const t of tools) {
+            if (t.transient && t.status === 'running' && token?.type !== 'status') {
+              t.status = 'done';
+              onTool({ ...t });
+            }
+          }
           if (typeof token === 'string') {
             text += token;
             onToken(token);
+          } else if (token?.type === 'status') {
+            // A temporary notice (e.g. waiting out a free-tier rate limit).
+            const step = { id: `status_${tools.length}`, name: 'wait', label: token.label, status: 'running', transient: true };
+            tools.push(step);
+            onTool({ ...step });
           } else if (token?.type === 'tool') {
             const step = { id: token.id, name: token.name, label: token.label, args: token.args, status: 'running' };
             tools.push(step);
@@ -183,8 +194,9 @@ export async function generateReply({ history, prefs = {}, category, userName, s
   }
 
   // Answers that used tools depend on live data, so they are never cached.
-  if (key && text && !tools.length && !signal?.aborted) cache.set(key, text);
-  return { text, provider: p.name, model: p.model, latencyMs: Date.now() - started, cached: false, stopped: !!signal?.aborted, tools };
+  if (key && text && !tools.some((t) => !t.transient) && !signal?.aborted) cache.set(key, text);
+  const used = tools.filter((t) => !t.transient);
+  return { text, provider: p.name, model: p.model, latencyMs: Date.now() - started, cached: false, stopped: !!signal?.aborted, tools: used };
 }
 
 const translations = new LRUCache({ max: 300, ttl: 1000 * 60 * 60 * 6 });

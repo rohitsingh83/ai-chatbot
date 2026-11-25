@@ -138,7 +138,7 @@ Message       { conversation → Conversation, user → User, role, content,
 - Chat messages: `RATE_LIMIT_MESSAGES_PER_MIN` (default 20) per user, over both HTTP and WebSockets.
 - Messages up to 8,000 characters; JSON bodies up to 1 MB (room for attached files' text); file uploads up to 4 MB.
 - A reply can use up to 5 rounds of tool calls. Answers that used tools are never cached.
-- AI calls time out after `AI_TIMEOUT_MS` (default 90 s) and retry once on 429/5xx before any text has streamed.
+- AI calls time out after `AI_TIMEOUT_MS` (default 120 s) and retry once on 429/5xx before any text has streamed.
 - Identical first questions in the same mode are served from an in-memory LRU cache for an hour.
 
 ## Postman

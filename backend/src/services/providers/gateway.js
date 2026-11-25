@@ -108,11 +108,13 @@ export function gatewayProvider({ model, fallbackModels = [], maxTokens }) {
           .map((m) => (rateLimitedUntil.get(m) || 0) - Date.now());
         if (!waits.length) break; // nothing usable on this plan
         const wait = Math.max(0, Math.min(...waits));
-        if (Date.now() - startedAt + wait > 45 * 1000 || args.signal?.aborted) {
+        if (Date.now() - startedAt + wait > 75 * 1000 || args.signal?.aborted) {
           lastRateLimit ||= Object.assign(new Error('AI Gateway models are rate limited'), { status: 429 });
           break;
         }
         logger.info(`AI Gateway: all models busy, waiting ${Math.round(wait / 1000)}s`);
+        // Tell the user why there is a pause (shown as a step in the chat, not saved).
+        if (wait > 1500) yield { type: 'status', label: `The free AI model is busy. Continuing in about ${Math.ceil(wait / 1000)}s…` };
         await sleep(wait + 250, args.signal);
       }
       // Every model is busy: report the rate limit so the user can retry shortly.

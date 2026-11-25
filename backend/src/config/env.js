@@ -32,11 +32,11 @@ export const env = {
     openaiBaseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
     gatewayModel: process.env.AI_GATEWAY_MODEL || 'anthropic/claude-haiku-5.5',
     // Tried in order when the main model is not available on the team's plan (e.g. AI Gateway free tier).
-    gatewayFallbackModels: list(process.env.AI_GATEWAY_FALLBACK_MODELS || 'nvidia/nemotron-3.5-lightning-free,reflection/beam-free'),
+    gatewayFallbackModels: list(process.env.AI_GATEWAY_FALLBACK_MODELS || 'nvidia/nemotron-3.5-lightning-free'),
     maxTokens: Number(process.env.AI_MAX_TOKENS) || 1024,
     // Reasoning models on the gateway think before answering, so they need a bigger budget.
     gatewayMaxTokens: Number(process.env.AI_GATEWAY_MAX_TOKENS) || 4096,
-    timeoutMs: Number(process.env.AI_TIMEOUT_MS) || 90000,
+    timeoutMs: Number(process.env.AI_TIMEOUT_MS) || 120000,
     // Free tools (web search, web pages, weather, calculator, time, Wikipedia) for models that support them.
     tools: process.env.AI_TOOLS !== 'false',
     historyLimit: Number(process.env.AI_HISTORY_LIMIT) || 20,

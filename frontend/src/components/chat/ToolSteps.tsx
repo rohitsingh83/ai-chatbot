@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { AlertCircle, Calculator, Check, Clock, CloudSun, FileCode2, FileSpreadsheet, FileText, Globe, Library, Loader2, Search, X } from "lucide-react";
+import { AlertCircle, Calculator, Check, Clock, CloudSun, Hourglass, FileCode2, FileSpreadsheet, FileText, Globe, Library, Loader2, Search, X } from "lucide-react";
 import { cn } from "@/utils/cn";
 import type { Attachment, ToolStep } from "@/utils/types";
 
@@ -17,6 +17,7 @@ const TOOL_ICON: Record<string, typeof Search> = {
   calculate: Calculator,
   get_current_time: Clock,
   wikipedia: Library,
+  wait: Hourglass,
 };
 
 /** The steps Nova took for a reply, e.g. "Searching the web for …", shown as small live chips. */
